@@ -11,6 +11,16 @@ import { ScalePanel } from "@/components/scale-panel";
 import { useToast } from "@/hooks/use-toast";
 import { getPolygonBounds, getPolygonCentroid } from "@/lib/geometry";
 
+interface LegacyProjectData {
+  rooms?: Room[];
+  furniture?: Furniture[];
+  annotations?: Annotation[];
+  measurements?: Measurement[];
+  surfaces?: Surface[];
+  scale: { pixels: number; meters: number };
+  backgroundImage: string | null;
+}
+
 interface ProjectData {
   items: BaseItem[];
   scale: { pixels: number; meters: number };
@@ -18,12 +28,25 @@ interface ProjectData {
 }
 
 const migrateProjectData = (data: any): ProjectData => {
+  // 1. Check if it's the old format (e.g., has a 'furniture' array but no 'items' array)
+  if (data && !data.items && (data.furniture || data.rooms || data.annotations || data.measurements || data.surfaces)) {
+    const combinedItems: BaseItem[] = [
+      ...(data.rooms || []),
+      ...(data.furniture || []),
+      ...(data.annotations || []),
+      ...(data.measurements || []),
+      ...(data.surfaces || []),
+    ];
+    data.items = combinedItems;
+  }
+  
   // Ensure data is an object and has default top-level properties
   if (typeof data !== 'object' || data === null) data = {};
   if (!Array.isArray(data.items)) data.items = [];
   if (!data.scale) data.scale = { pixels: 100, meters: 1 };
   if (!data.backgroundImage) data.backgroundImage = null;
 
+  // 2. Now, migrate each individual item in the 'items' array
   const migratedItems = data.items.map((item: any) => {
     // Basic defaults for any item
     const defaults = {
@@ -42,19 +65,19 @@ const migrateProjectData = (data: any): ProjectData => {
       return { ...furnitureDefaults, ...migratedItem };
     }
     
-    if (migratedItem.type === 'room') {
+    if (migratedItem.type === 'room' && migratedItem.points) {
       const roomDefaults = {
         rotation: 0,
       };
       let room = { ...roomDefaults, ...migratedItem };
       // If width/height are missing, calculate from points
-      if (room.points && (!room.width || !room.height)) {
+      if (!room.width || !room.height) {
         const bounds = getPolygonBounds(room.points);
         room.width = bounds.width;
         room.height = bounds.height;
       }
        // If x/y are missing, calculate from points
-      if (room.points && (!room.x || !room.y)) {
+      if (!room.x || !room.y) {
         const centroid = getPolygonCentroid(room.points);
         room.x = centroid.x;
         room.y = centroid.y;
@@ -118,7 +141,7 @@ export default function Home() {
         if (typeof text !== 'string') {
           throw new Error("File is not valid text.");
         }
-        let data: ProjectData = JSON.parse(text);
+        let data = JSON.parse(text);
         
         // Migrate data first to ensure compatibility
         const migratedData = migrateProjectData(data);
@@ -250,12 +273,12 @@ export default function Home() {
           if (center && 'x' in newItem && 'y' in newItem) {
             newItem.x = center.x;
             newItem.y = center.y;
-          } else if (newItem.type === 'room' && center) {
+          } else if (newItem.type === 'room' && 'points' in newItem && Array.isArray(newItem.points) && center) {
             const roomCenter = getPolygonCentroid(newItem.points);
             const dx = center.x - roomCenter.x;
             const dy = center.y - roomCenter.y;
             newItem.points = newItem.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
-          } else if ('x' in newItem) {
+          } else if ('x' in newItem && 'y' in newItem) {
             newItem.x += 10;
             newItem.y += 10;
           }
