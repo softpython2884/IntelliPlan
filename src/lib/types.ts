@@ -17,6 +17,8 @@ export interface Room extends BaseItem {
   x: number;
   y: number;
   rotation: number;
+  width: number; // For overall dimensions
+  height: number; // For overall dimensions
 }
 
 export interface Furniture extends BaseItem {

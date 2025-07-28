@@ -4,20 +4,20 @@ import { useRef, useState, useEffect } from 'react';
 import type { Room, Furniture, Annotation, Point, Measurement, BaseItem, Surface } from '@/lib/types';
 import { useDraggable } from '@/hooks/use-draggable';
 import { cn } from '@/lib/utils';
-import { getDistance, formatDistance, getPolygonCentroid } from '@/lib/geometry';
+import { getDistance, formatDistance, getPolygonCentroid, getPolygonBounds } from '@/lib/geometry';
 
 interface CanvasProps {
   tool: string;
   items: BaseItem[];
-  setItems: (items: BaseItem[]) => void;
-  scale: { pixels: number, meters: number };
   setScale: (scale: { pixels: number, meters: number }) => void;
+  scale: { pixels: number, meters: number };
   selectedItem: BaseItem | null;
   onSelectItem: (item: BaseItem | null) => void;
   onUpdateItem: (item: BaseItem) => void;
   backgroundImage: string | null;
   setTool: (tool: string) => void;
   onAddRoom: (room: Room) => void;
+  onAddMeasurement: (measurement: Measurement) => void;
 }
 
 const surfaceColors: Record<Surface['surfaceType'], string> = {
@@ -30,7 +30,6 @@ const surfaceColors: Record<Surface['surfaceType'], string> = {
 export function Canvas({
   tool,
   items,
-  setItems,
   scale,
   setScale,
   selectedItem,
@@ -39,11 +38,12 @@ export function Canvas({
   backgroundImage,
   setTool,
   onAddRoom,
+  onAddMeasurement,
 }: CanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, width: 800, height: 600 });
   const [isMeasuring, setIsMeasuring] = useState(false);
-  const [currentMeasurement, setCurrentMeasurement] = useState<Measurement | null>(null);
+  const [currentMeasurementPoints, setCurrentMeasurementPoints] = useState<Point[]>([]);
   const [isResizing, setIsResizing] = useState<{item: Room, pointIndex: number} | null>(null);
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0, x: 0, y: 0 });
   const [isDrawingRoom, setIsDrawingRoom] = useState(false);
@@ -143,27 +143,36 @@ export function Canvas({
     const point = getSVGPoint(e);
     
     if (tool === 'measure') {
-        if (!isMeasuring) {
-            const isFirstMeasurement = !items.some(i => i.type === 'measurement' && i.isReference);
-            const newMeasurement: Measurement = {
-              id: `measure-${Date.now()}`, 
-              type: 'measurement', 
-              start: point, 
-              end: point, 
-              visible: true, 
-              isReference: isFirstMeasurement,
-            };
-            setIsMeasuring(true);
-            setCurrentMeasurement(newMeasurement);
-            setItems([...items, newMeasurement]);
-        } else if (currentMeasurement) {
-            const finalMeasurement = { ...currentMeasurement, end: point };
-            onUpdateItem(finalMeasurement);
-            onSelectItem(finalMeasurement);
-            setIsMeasuring(false);
-            setCurrentMeasurement(null);
-            setTool('select');
+      if (!isMeasuring) {
+        setIsMeasuring(true);
+        setCurrentMeasurementPoints([point]);
+      } else {
+        const startPoint = currentMeasurementPoints[0];
+        const isFirstMeasurement = !items.some(i => i.type === 'measurement' && i.isReference);
+
+        const newMeasurement: Measurement = {
+          id: `measure-${Date.now()}`,
+          type: 'measurement',
+          start: startPoint,
+          end: point,
+          visible: true,
+          isReference: isFirstMeasurement,
+          realLength: isFirstMeasurement ? 1 : undefined,
+        };
+        onAddMeasurement(newMeasurement);
+        onSelectItem(newMeasurement);
+
+        if (isFirstMeasurement) {
+            const pixelLength = getDistance(startPoint, point);
+            if (pixelLength > 0) {
+              setScale({ pixels: pixelLength, meters: 1 });
+            }
         }
+        
+        setIsMeasuring(false);
+        setCurrentMeasurementPoints([]);
+        setTool('select');
+      }
     } else if (tool === 'select' && item?.type === 'room' && pointIndex !== undefined) {
       setIsResizing({item: item as Room, pointIndex});
     } else if (tool === 'draw-room' && isDrawingRoom) {
@@ -179,17 +188,14 @@ export function Canvas({
 
   const handleMouseMove = (e: React.MouseEvent | MouseEvent) => {
     const point = getSVGPoint(e as React.MouseEvent);
-    if (tool === 'measure' && isMeasuring && currentMeasurement) {
-      const updatedMeasurement = { ...currentMeasurement, end: point };
-      setCurrentMeasurement(updatedMeasurement);
-      onUpdateItem(updatedMeasurement);
+    if ((tool === 'measure' && isMeasuring) || isDrawingRoom) {
+        setPreviewPoint(point);
     } else if (isResizing) {
         const room = isResizing.item;
         const newPoints = [...room.points];
         newPoints[isResizing.pointIndex] = point;
-        onUpdateItem({ ...room, points: newPoints });
-    } else if (isDrawingRoom) {
-      setPreviewPoint(point);
+        const bounds = getPolygonBounds(newPoints);
+        onUpdateItem({ ...room, points: newPoints, width: bounds.width, height: bounds.height });
     }
   };
   
@@ -205,6 +211,7 @@ export function Canvas({
       return;
     }
     const centroid = getPolygonCentroid(currentRoomPoints);
+    const bounds = getPolygonBounds(currentRoomPoints);
     const newRoom: Room = {
       id: `room-${Date.now()}`,
       type: 'room',
@@ -213,7 +220,9 @@ export function Canvas({
       visible: true,
       x: centroid.x,
       y: centroid.y,
-      rotation: 0
+      rotation: 0,
+      width: bounds.width,
+      height: bounds.height
     };
     onAddRoom(newRoom);
     cancelDrawing();
@@ -229,7 +238,7 @@ export function Canvas({
 
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget || (e.target as SVGElement).tagName === 'image' || ((e.target as SVGElement).tagName === 'rect' && !(e.target as SVGElement).hasAttribute('data-item-id'))) {
-        if (!isDrawingRoom) onSelectItem(null);
+        if (!isDrawingRoom && tool !== 'measure') onSelectItem(null);
     }
   };
 
@@ -260,9 +269,9 @@ export function Canvas({
     return `${path} Z`;
   };
 
-  const getDrawingRoomPath = () => {
-    if (currentRoomPoints.length === 0) return "";
-    let path = currentRoomPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const getDrawingPath = (points: Point[]) => {
+    if (points.length === 0) return "";
+    let path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
     if (previewPoint) {
       path += ` L ${previewPoint.x} ${previewPoint.y}`;
     }
@@ -311,7 +320,18 @@ export function Canvas({
       const midPoint = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
       
       const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-      const perpAngle = angle + Math.PI / 2;
+      let perpAngle = angle + Math.PI / 2;
+      
+      // Basic check for inside/outside, may need improvement for complex polygons
+      const testPoint = {
+          x: midPoint.x + Math.cos(perpAngle),
+          y: midPoint.y + Math.sin(perpAngle)
+      };
+      
+      const centroid = getPolygonCentroid(room.points);
+      if (getDistance(testPoint, centroid) < getDistance(midPoint, centroid)) {
+        perpAngle += Math.PI;
+      }
 
       const textX = midPoint.x + offset * Math.cos(perpAngle);
       const textY = midPoint.y + offset * Math.sin(perpAngle);
@@ -356,7 +376,7 @@ export function Canvas({
             <g key={room.id} onMouseDown={(e) => handleMouseDown(e, room)} className={tool === 'select' ? 'cursor-move' : ''}>
               <path
                 d={getRoomPath(room)}
-                fill={selectedItem?.id === room.id ? "hsl(var(--primary) / 0.1)" : "hsl(var(--primary) / 0.3)"}
+                fill={selectedItem?.id === room.id ? "hsl(var(--primary) / 0.2)" : "hsl(var(--primary) / 0.1)"}
                 stroke="hsl(var(--primary))"
                 strokeWidth={selectedItem?.id === room.id ? 2 * zoomFactor : 1 * zoomFactor}
                 className="transition-all"
@@ -390,7 +410,7 @@ export function Canvas({
                 y={0}
                 width={item.width}
                 height={item.height}
-                fill={selectedItem?.id === item.id ? "hsl(var(--accent) / 0.1)" : "hsl(var(--accent) / 0.6)"}
+                fill={selectedItem?.id === item.id ? "hsl(var(--accent) / 0.3)" : "hsl(var(--accent) / 0.6)"}
                 stroke="hsl(var(--accent-foreground))"
                 strokeWidth={selectedItem?.id === item.id ? 2 * zoomFactor : 1 * zoomFactor}
                 rx="4"
@@ -405,8 +425,8 @@ export function Canvas({
 
           {annotations.map((note) => ( note.visible &&
             <g key={note.id} onMouseDown={(e) => handleMouseDown(e, note)} className={tool === 'select' ? 'cursor-move' : ''}>
-              <foreignObject x={note.x} y={note.y} width="120" height="80" style={{ transform: `scale(${zoomFactor})`, transformOrigin: 'top left' }}>
-                  <div className={cn("p-2 text-xs bg-card border rounded-md shadow-md h-full w-full overflow-hidden text-ellipsis select-none", { "bg-card/50": selectedItem?.id === note.id })}>
+              <foreignObject x={note.x} y={note.y} width="120" height="80">
+                  <div className={cn("p-2 text-xs bg-card border rounded-md shadow-md h-full w-full overflow-hidden text-ellipsis select-none", { "bg-card/50": selectedItem?.id === note.id })} style={{ transform: `scale(${zoomFactor})`, transformOrigin: 'top left' }}>
                     {note.text}
                   </div>
               </foreignObject>
@@ -439,7 +459,7 @@ export function Canvas({
                   <text 
                       y={-8 * zoomFactor}
                       textAnchor="middle"
-                      fill={line.isReference ? "hsl(var(--foreground))" : "hsl(var(--destructive))"}
+                      fill={line.isReference ? "hsl(var(--foreground))" : "hsl(var(--destructive-foreground))"}
                       stroke={"hsl(var(--background))"}
                       strokeWidth={3 * zoomFactor}
                       paintOrder="stroke"
@@ -456,10 +476,10 @@ export function Canvas({
           {selectedItem?.type === 'room' && renderResizeHandles(selectedItem as Room)}
           {selectedItem?.type === 'room' && (isResizing || selectedItem) && renderRoomDimensions(selectedItem as Room)}
           
-          {isDrawingRoom && (
+          {(isDrawingRoom || (isMeasuring && currentMeasurementPoints.length > 0)) && (
             <g>
-              <polyline points={getDrawingRoomPath()} fill="none" stroke="hsl(var(--primary))" strokeWidth={2 * zoomFactor} strokeDasharray={`${5*zoomFactor},${5*zoomFactor}`} />
-              {currentRoomPoints.map((p, i) => (
+              <path d={getDrawingPath(isDrawingRoom ? currentRoomPoints : currentMeasurementPoints)} fill="none" stroke="hsl(var(--primary))" strokeWidth={2 * zoomFactor} strokeDasharray={`${5*zoomFactor},${5*zoomFactor}`} />
+              {(isDrawingRoom ? currentRoomPoints : currentMeasurementPoints).map((p, i) => (
                 <circle key={i} cx={p.x} cy={p.y} r={4 * zoomFactor} fill={i === 0 ? 'hsl(var(--ring))' : 'hsl(var(--primary))'} />
               ))}
             </g>

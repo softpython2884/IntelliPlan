@@ -16,7 +16,7 @@ export default function Home() {
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [surfaces, setSurfaces] = useState<Surface[]>([]);
-  const [scale, setScale] = useState({ pixels: 0, meters: 0 });
+  const [scale, setScale] = useState({ pixels: 100, meters: 1 }); // Default scale
   const [selectedItem, setSelectedItem] = useState<BaseItem | null>(null);
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
 
@@ -28,7 +28,7 @@ export default function Home() {
     setSurfaces([]);
     setSelectedItem(null);
     setBackgroundImage(null);
-    setScale({ pixels: 0, meters: 0 });
+    setScale({ pixels: 100, meters: 1 });
   };
 
   const addRoom = (newRoom: Room) => {
@@ -65,6 +65,10 @@ export default function Home() {
     setAnnotations([...annotations, newAnnotation]);
     setSelectedItem(newAnnotation);
   }
+  
+  const addMeasurement = (newMeasurement: Measurement) => {
+    setMeasurements([...measurements, newMeasurement]);
+  }
 
   const updateItem = (item: BaseItem) => {
     const updater = (prevItems: BaseItem[]) => prevItems.map(i => i.id === item.id ? item : i);
@@ -90,15 +94,16 @@ export default function Home() {
     setSurfaces(prev => [...prev, newSurface]);
   };
 
-  const setItems = (newItems: BaseItem[]) => {
-      setRooms(newItems.filter(i => i.type === 'room') as Room[]);
-      setFurniture(newItems.filter(i => i.type === 'furniture') as Furniture[]);
-      setAnnotations(newItems.filter(i => i.type === 'annotation') as Annotation[]);
-      setMeasurements(newItems.filter(i => i.type === 'measurement') as Measurement[]);
-      setSurfaces(newItems.filter(i => i.type === 'surface') as Surface[]);
+  const deleteItem = (item: BaseItem | null) => {
+    if (!item) return;
+    if (item.type === 'room') setRooms(rooms.filter(r => r.id !== item.id));
+    if (item.type === 'furniture') setFurniture(furniture.filter(f => f.id !== item.id));
+    if (item.type === 'annotation') setAnnotations(annotations.filter(a => a.id !== item.id));
+    if (item.type === 'measurement') setMeasurements(measurements.filter(m => m.id !== item.id));
+    if (item.type === 'surface') setSurfaces(surfaces.filter(s => s.id !== item.id));
+    setSelectedItem(null);
   }
 
-  // Correct layering order for rendering and for the layers panel
   const allItems = [...rooms, ...surfaces, ...furniture, ...annotations, ...measurements];
 
   return (
@@ -117,7 +122,6 @@ export default function Home() {
           <Canvas
             tool={tool}
             items={allItems}
-            setItems={setItems}
             scale={scale}
             setScale={setScale}
             selectedItem={selectedItem}
@@ -126,20 +130,13 @@ export default function Home() {
             backgroundImage={backgroundImage}
             setTool={setTool}
             onAddRoom={addRoom}
+            onAddMeasurement={addMeasurement}
           />
         </main>
         <PropertiesPanel
           selectedItem={selectedItem}
           onUpdateItem={updateItem}
-          onDeleteItem={(item) => {
-            if (!item) return;
-            if (item.type === 'room') setRooms(rooms.filter(r => r.id !== item.id));
-            if (item.type === 'furniture') setFurniture(furniture.filter(f => f.id !== item.id));
-            if (item.type === 'annotation') setAnnotations(annotations.filter(a => a.id !== item.id));
-            if (item.type === 'measurement') setMeasurements(measurements.filter(m => m.id !== item.id));
-            if (item.type === 'surface') setSurfaces(surfaces.filter(s => s.id !== item.id));
-            setSelectedItem(null);
-          }}
+          onDeleteItem={deleteItem}
           onSelectItem={setSelectedItem}
           allItems={allItems}
           allFurniture={furniture}

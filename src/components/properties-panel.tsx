@@ -94,8 +94,9 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
         )}
 
         {selectedItem.type === 'room' && (
-          <div>
-            <p className="text-sm text-muted-foreground">This is a custom shape room. Area calculation coming soon.</p>
+          <div className="text-sm text-muted-foreground">
+            <p>Width: {formatDistance(selectedItem.width, scale)}</p>
+            <p>Height: {formatDistance(selectedItem.height, scale)}</p>
           </div>
         )}
 
@@ -140,11 +141,11 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
           <>
             <div>
               <Label>Length</Label>
-              <p className="text-sm text-muted-foreground">{formatDistance(getDistance(selectedItem.start, selectedItem.end), scale)}</p>
-              <div className="mt-2">
-                <Label htmlFor="realLength">Set as Reference: Real Length (m)</Label>
+              <p className="text-sm font-bold">{formatDistance(getDistance(selectedItem.start, selectedItem.end), scale, selectedItem.realLength)}</p>
+              <div className="mt-4">
+                <Label htmlFor="realLength">Set as Reference Scale: Real Length (m)</Label>
                 <Input id="realLength" type="number" placeholder="e.g. 2.5" step="0.01" value={selectedItem.realLength || ''} onChange={(e) => handlePropertyChange('realLength', parseFloat(e.target.value))} />
-                 <p className="text-xs text-muted-foreground mt-1">Set this to define the scale for the entire plan.</p>
+                 <p className="text-xs text-muted-foreground mt-1">Set this to define the scale for the entire plan. This measurement will turn blue.</p>
               </div>
             </div>
             <Button variant="outline" onClick={handleConvertToSurface} className="w-full">
