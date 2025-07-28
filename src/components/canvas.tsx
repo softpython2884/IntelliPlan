@@ -28,6 +28,43 @@ const surfaceColors: Record<Surface['surfaceType'], string> = {
   other: 'hsl(var(--accent) / 0.8)',
 };
 
+const ElectricalIcon = ({ item, isSelected, zoomFactor }: { item: Furniture, isSelected: boolean, zoomFactor: number }) => {
+    const pixelWidth = (item.width / 100) / scale.meters * scale.pixels;
+    const pixelHeight = (item.height / 100) / scale.meters * scale.pixels;
+
+    const strokeColor = isSelected ? "hsl(var(--ring))" : "hsl(var(--foreground))";
+    const strokeWidth = (isSelected ? 2 : 1) * zoomFactor;
+
+    let iconSvg;
+    switch(item.name) {
+        case 'Switch':
+            iconSvg = <g>
+                <rect x={-pixelWidth/2} y={-pixelHeight/2} width={pixelWidth} height={pixelHeight} rx="2" stroke={strokeColor} strokeWidth={strokeWidth} fill="hsl(var(--background))" />
+                <line x1={0} y1={-pixelHeight/4} x2={0} y2={pixelHeight/4} stroke={strokeColor} strokeWidth={strokeWidth} />
+            </g>;
+            break;
+        case 'Outlet':
+             iconSvg = <g>
+                <rect x={-pixelWidth/2} y={-pixelHeight/2} width={pixelWidth} height={pixelHeight} rx="2" stroke={strokeColor} strokeWidth={strokeWidth} fill="hsl(var(--background))" />
+                <line x1={-pixelWidth/4} y1={0} x2={-pixelWidth/4} y2={0.1} stroke={strokeColor} strokeWidth={strokeWidth} />
+                <line x1={pixelWidth/4} y1={0} x2={pixelWidth/4} y2={0.1} stroke={strokeColor} strokeWidth={strokeWidth} />
+            </g>;
+            break;
+        case 'Ceiling Light':
+             iconSvg = <g>
+                <circle cx="0" cy="0" r={pixelWidth / 2} stroke={strokeColor} strokeWidth={strokeWidth} fill="hsl(var(--background))" />
+                <line x1={-pixelWidth/2.5} y1={-pixelHeight/2.5} x2={pixelWidth/2.5} y2={pixelHeight/2.5} stroke={strokeColor} strokeWidth={strokeWidth/2} />
+                <line x1={-pixelWidth/2.5} y1={pixelHeight/2.5} x2={pixelWidth/2.5} y2={-pixelHeight/2.5} stroke={strokeColor} strokeWidth={strokeWidth/2} />
+            </g>;
+            break;
+        default:
+             iconSvg = <rect x={-pixelWidth/2} y={-pixelHeight/2} width={pixelWidth} height={pixelHeight} rx="2" stroke={strokeColor} strokeWidth={strokeWidth} fill="hsl(var(--background))" />;
+    }
+    
+    return <g transform={`translate(${item.x}, ${item.y}) rotate(${item.rotation})`}>{iconSvg}</g>;
+}
+
+
 export function Canvas({
   canvasApiRef,
   tool,
@@ -416,16 +453,23 @@ export function Canvas({
           
           {furniture.map((item) => {
               if (!item.visible) return null;
-              const pixelWidth = (item.width / 100) / scale.meters * scale.pixels;
-              const pixelHeight = (item.height / 100) / scale.meters * scale.pixels;
               const isSelected = selectedItem?.id === item.id;
               
-              const defaultFill = item.color || 'hsl(var(--accent) / 0.6)';
+              if(item.category === 'electrical') {
+                return <g key={item.id} onMouseDown={(e) => handleMouseDown(e, item)} className={tool === 'select' ? 'cursor-move' : ''}>
+                   <ElectricalIcon item={item} isSelected={isSelected} zoomFactor={zoomFactor} />
+                </g>
+              }
+
+              const pixelWidth = (item.width / 100) / scale.meters * scale.pixels;
+              const pixelHeight = (item.height / 100) / scale.meters * scale.pixels;
+              
+              const defaultFill = item.color || 'hsl(var(--accent))';
               
               const elementProps = {
                 fill: defaultFill,
-                stroke: isSelected ? "hsl(var(--ring))" : "hsl(var(--accent-foreground))",
-                strokeWidth: isSelected ? 2 * zoomFactor : 1 * zoomFactor,
+                stroke: isSelected ? "hsl(var(--ring))" : "hsl(var(--accent-foreground) / 0.5)",
+                strokeWidth: isSelected ? 2 * zoomFactor : 0.5 * zoomFactor,
                 className:"transition-all",
                 'data-item-id': item.id,
                 style: { fillOpacity: isSelected ? 0.7 : 1 }
@@ -524,5 +568,3 @@ export function Canvas({
     </div>
   );
 }
-
-    
