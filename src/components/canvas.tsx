@@ -418,25 +418,42 @@ export function Canvas({
               if (!item.visible) return null;
               const pixelWidth = (item.width / 100) / scale.meters * scale.pixels;
               const pixelHeight = (item.height / 100) / scale.meters * scale.pixels;
-
+              const isSelected = selectedItem?.id === item.id;
+              
+              const defaultFill = item.color ? item.color : 'hsl(var(--accent) / 0.6)';
+              const selectedFill = item.color ? `${item.color.slice(0, -2)} / 0.3)` : 'hsl(var(--accent) / 0.3)';
+              
+              const elementProps = {
+                fill: isSelected ? selectedFill : defaultFill,
+                stroke: "hsl(var(--accent-foreground))",
+                strokeWidth: isSelected ? 2 * zoomFactor : 1 * zoomFactor,
+                className:"transition-all",
+                'data-item-id': item.id,
+              }
+              
               return (
-              <g key={item.id} onMouseDown={(e) => handleMouseDown(e, item)} className={tool === 'select' ? 'cursor-move' : ''} transform={`translate(${item.x}, ${item.y}) rotate(${item.rotation} ${pixelWidth/2} ${pixelHeight/2})`}>
-              <rect
-                x={0}
-                y={0}
-                width={pixelWidth}
-                height={pixelHeight}
-                fill={selectedItem?.id === item.id ? "hsl(var(--accent) / 0.3)" : "hsl(var(--accent) / 0.6)"}
-                stroke="hsl(var(--accent-foreground))"
-                strokeWidth={selectedItem?.id === item.id ? 2 * zoomFactor : 1 * zoomFactor}
-                rx={4 * zoomFactor}
-                className="transition-all"
-                data-item-id={item.id}
-              />
-              <text x={pixelWidth / 2} y={pixelHeight / 2} textAnchor="middle" dy=".3em" fill="hsl(var(--accent-foreground))" fontSize={10 * zoomFactor} pointerEvents="none" className="select-none">
-                {item.name}
-              </text>
-            </g>
+              <g key={item.id} onMouseDown={(e) => handleMouseDown(e, item)} className={tool === 'select' ? 'cursor-move' : ''} transform={`translate(${item.x}, ${item.y}) rotate(${item.rotation})`}>
+                {item.shape === 'circle' ? (
+                  <circle 
+                    cx={pixelWidth / 2}
+                    cy={pixelHeight / 2}
+                    r={pixelWidth / 2}
+                    {...elementProps}
+                  />
+                ) : (
+                  <rect
+                    x={0}
+                    y={0}
+                    width={pixelWidth}
+                    height={pixelHeight}
+                    rx={4 * zoomFactor}
+                    {...elementProps}
+                  />
+                )}
+                <text x={pixelWidth / 2} y={pixelHeight / 2} textAnchor="middle" dy=".3em" fill="hsl(var(--accent-foreground))" fontSize={10 * zoomFactor} pointerEvents="none" className="select-none">
+                  {item.name}
+                </text>
+              </g>
           )})}
 
           {annotations.map((note) => ( note.visible &&
@@ -507,3 +524,5 @@ export function Canvas({
     </div>
   );
 }
+
+    

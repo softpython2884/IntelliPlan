@@ -114,30 +114,33 @@ export default function Home() {
     setTool('select');
   };
 
-  const addFurniture = (item: { name: string; width: number; height: number; icon: FC<any>, category: 'furniture' | 'electrical' }) => {
+  const addFurniture = (item: { name: string; width: number; height: number; shape: 'rectangle' | 'circle', color: string, icon: FC<any>, category: 'furniture' | 'electrical' }) => {
     const center = canvasApiRef.current?.getCenter() || { x: 100, y: 100 };
     const newFurniture: Furniture = {
       id: `furniture-${Date.now()}`,
       type: 'furniture',
       x: center.x,
       y: center.y,
-      width: item.width, // in cm
-      height: item.height, // in cm
+      width: item.width,
+      height: item.height,
       name: item.name,
       rotation: 0,
       visible: true,
       category: item.category,
+      shape: item.shape,
+      color: item.color,
     };
     setFurniture([...furniture, newFurniture]);
     setSelectedItem(newFurniture);
   };
-
+  
   const addAnnotation = () => {
+    const center = canvasApiRef.current?.getCenter() || { x: 150, y: 150 };
     const newAnnotation: Annotation = {
       id: `annotation-${Date.now()}`,
       type: 'annotation',
-      x: 150,
-      y: 150,
+      x: center.x,
+      y: center.y,
       text: 'New Note',
       visible: true,
     };
@@ -203,11 +206,19 @@ export default function Home() {
       if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
         if (clipboard && !isTextInput) {
           const newItem = { ...clipboard, id: `${clipboard.type}-${Date.now()}` };
-          if ('x' in newItem && 'y' in newItem) {
+          const center = canvasApiRef.current?.getCenter();
+
+          if (center && 'x' in newItem && 'y' in newItem) {
+            newItem.x = center.x;
+            newItem.y = center.y;
+          } else if (newItem.type === 'room' && center) {
+            const roomCenter = getPolygonCentroid(newItem.points);
+            const dx = center.x - roomCenter.x;
+            const dy = center.y - roomCenter.y;
+            newItem.points = newItem.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
+          } else if ('x' in newItem) {
             newItem.x += 10;
             newItem.y += 10;
-          } else if (newItem.type === 'room') {
-            newItem.points = newItem.points.map(p => ({ x: p.x + 10, y: p.y + 10 }));
           }
 
           if (newItem.type === 'room') setRooms(prev => [...prev, newItem as Room]);
@@ -272,3 +283,43 @@ export default function Home() {
     </div>
   );
 }
+
+// This helper function needs to be available in this scope for the paste action.
+// You can move it to a geometry utility file if you have one.
+function getPolygonCentroid(points: Point[]): Point {
+    let centroid: Point = { x: 0, y: 0 };
+    if (!points || points.length === 0) return centroid;
+    
+    let signedArea = 0;
+    let x0 = 0, y0 = 0, x1 = 0, y1 = 0, a = 0;
+
+    for (let i = 0; i < points.length; i++) {
+        x0 = points[i].x;
+        y0 = points[i].y;
+        x1 = points[(i + 1) % points.length].x;
+        y1 = points[(i + 1) % points.length].y;
+        a = x0 * y1 - x1 * y0;
+        signedArea += a;
+        centroid.x += (x0 + x1) * a;
+        centroid.y += (y0 + y1) * a;
+    }
+
+    if (signedArea === 0) {
+        // Fallback for collinear points or single point
+        for (const p of points) {
+            centroid.x += p.x;
+            centroid.y += p.y;
+        }
+        centroid.x /= points.length;
+        centroid.y /= points.length;
+        return centroid;
+    }
+
+    signedArea *= 0.5;
+    centroid.x /= (6.0 * signedArea);
+    centroid.y /= (6.0 * signedArea);
+
+    return centroid;
+}
+
+    

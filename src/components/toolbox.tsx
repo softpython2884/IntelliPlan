@@ -11,24 +11,24 @@ import { cn } from "@/lib/utils";
 interface ToolboxProps {
   currentTool: string;
   onToolSelect: (tool: string) => void;
-  onAddFurniture: (item: { name: string; width: number; height: number; icon: FC<any>, category: 'furniture' | 'electrical' }) => void;
+  onAddFurniture: (item: { name: string; width: number; height: number; shape: 'rectangle' | 'circle'; color: string; icon: FC<any>, category: 'furniture' | 'electrical' }) => void;
   onAddAnnotation: () => void;
   onImageUpload: (url: string) => void;
 }
 
-const furnitureItems = [
-  { name: 'Rectangle', width: 200, height: 90, icon: () => <div className="w-full h-full rounded-md bg-primary/80" />, category: 'furniture' },
-  { name: 'Square', width: 80, height: 80, icon: () => <div className="w-full h-full rounded-md bg-secondary-foreground/20" />, category: 'furniture' },
-  { name: 'Small Rectangle', width: 120, height: 60, icon: () => <div className="w-full h-full rounded-md bg-accent/80" />, category: 'furniture' },
-  { name: 'Slim Rectangle', width: 140, height: 10, icon: () => <div className="w-full h-full rounded-md bg-destructive/60" />, category: 'furniture' },
-  { name: 'Circle', width: 60, height: 60, icon: () => <div className="w-full h-full rounded-full bg-blue-300/80" />, category: 'furniture' },
-  { name: 'Small Square', width: 50, height: 50, icon: () => <div className="w-full h-full rounded-md bg-green-300/80" />, category: 'furniture' },
+const furnitureItems: Array<{ name: string; width: number; height: number; shape: 'rectangle' | 'circle'; color: string; icon: FC<any>, category: 'furniture' | 'electrical'}> = [
+  { name: 'Rectangle', width: 200, height: 90, shape: 'rectangle', color: 'hsl(var(--primary))', icon: () => <div className="w-full h-full rounded-md bg-primary/80" />, category: 'furniture' },
+  { name: 'Square', width: 80, height: 80, shape: 'rectangle', color: 'hsl(var(--secondary-foreground) / 0.2)', icon: () => <div className="w-full h-full rounded-md bg-secondary-foreground/20" />, category: 'furniture' },
+  { name: 'Small Rectangle', width: 120, height: 60, shape: 'rectangle', color: 'hsl(var(--accent))', icon: () => <div className="w-full h-full rounded-md bg-accent/80" />, category: 'furniture' },
+  { name: 'Slim Rectangle', width: 140, height: 10, shape: 'rectangle', color: 'hsl(var(--destructive))', icon: () => <div className="w-full h-full rounded-md bg-destructive/60" />, category: 'furniture' },
+  { name: 'Circle', width: 60, height: 60, shape: 'circle', color: 'hsl(200, 70%, 70%)', icon: () => <div className="w-full h-full rounded-full bg-blue-300/80" />, category: 'furniture' },
+  { name: 'Small Square', width: 50, height: 50, shape: 'rectangle', color: 'hsl(140, 60%, 70%)', icon: () => <div className="w-full h-full rounded-md bg-green-300/80" />, category: 'furniture' },
 ];
 
-const electricalItems = [
-    { name: 'Switch', width: 10, height: 10, icon: ToggleLeft, category: 'electrical' },
-    { name: 'Outlet', width: 10, height: 10, icon: Power, category: 'electrical' },
-    { name: 'Ceiling Light', width: 30, height: 30, icon: LampCeiling, category: 'electrical' },
+const electricalItems: Array<{ name: string; width: number; height: number; shape: 'rectangle' | 'circle'; color: string; icon: FC<any>, category: 'furniture' | 'electrical'}> = [
+    { name: 'Switch', width: 10, height: 10, shape: 'rectangle', color: 'hsl(var(--foreground))', icon: ToggleLeft, category: 'electrical' },
+    { name: 'Outlet', width: 10, height: 10, shape: 'rectangle', color: 'hsl(var(--foreground))', icon: Power, category: 'electrical' },
+    { name: 'Ceiling Light', width: 30, height: 30, shape: 'circle', color: 'hsl(var(--foreground))', icon: LampCeiling, category: 'electrical' },
 ]
 
 export function Toolbox({ currentTool, onToolSelect, onAddFurniture, onAddAnnotation, onImageUpload }: ToolboxProps) {
@@ -95,8 +95,8 @@ export function Toolbox({ currentTool, onToolSelect, onAddFurniture, onAddAnnota
 }
 
 interface ItemButtonProps {
-    item: { name: string; width: number; height: number; icon: FC<any>, category: 'furniture' | 'electrical' };
-    onAddItem: (item: { name:string; width: number; height: number; icon: FC<any>, category: 'furniture' | 'electrical' }) => void;
+    item: { name: string; width: number; height: number; shape: 'rectangle' | 'circle', color: string; icon: FC<any>, category: 'furniture' | 'electrical' };
+    onAddItem: (item: { name:string; width: number; height: number; shape: 'rectangle' | 'circle', color: string; icon: FC<any>, category: 'furniture' | 'electrical' }) => void;
 }
 
 function ItemButton({ item, onAddItem }: ItemButtonProps) {
@@ -150,3 +150,5 @@ function ToolButton({ name, icon: Icon, currentTool, onSelect }: ToolButtonProps
     </Tooltip>
   );
 }
+
+    

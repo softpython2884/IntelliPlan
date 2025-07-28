@@ -30,6 +30,8 @@ export interface Furniture extends BaseItem {
   name: string;
   rotation: number;
   category: 'furniture' | 'electrical';
+  shape: 'rectangle' | 'circle';
+  color: string;
 }
 
 export interface Annotation extends BaseItem {
@@ -57,3 +59,5 @@ export interface Surface extends BaseItem {
   surfaceType: SurfaceType;
   thickness: number; // in pixels
 }
+
+    
