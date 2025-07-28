@@ -5,7 +5,7 @@ export interface Point {
 
 export interface BaseItem {
   id: string;
-  type: 'room' | 'furniture' | 'annotation' | 'measurement' | 'surface';
+  type: 'room' | 'furniture' | 'annotation' | 'measurement' | 'surface' | 'wiring';
   visible?: boolean;
 }
 
@@ -58,4 +58,10 @@ export interface Surface extends BaseItem {
   end: Point;
   surfaceType: SurfaceType;
   thickness: number; // in pixels
+}
+
+export interface Wiring extends BaseItem {
+  type: 'wiring';
+  start: Point;
+  end: Point;
 }

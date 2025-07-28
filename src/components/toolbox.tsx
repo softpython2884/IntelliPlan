@@ -1,10 +1,10 @@
 "use client";
-import { MousePointer, Ruler, Square, Upload, Hand, MessageSquare } from "lucide-react";
+import { MousePointer, Ruler, Square, Upload, Hand, MessageSquare, Workflow } from "lucide-react";
 import type { FC } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +49,7 @@ export function Toolbox({ currentTool, onToolSelect, onAddFurniture, onAddAnnota
               <ToolButton name="select" icon={MousePointer} currentTool={currentTool} onSelect={onToolSelect} />
               <ToolButton name="pan" icon={Hand} currentTool={currentTool} onSelect={onToolSelect} />
               <ToolButton name="measure" icon={Ruler} currentTool={currentTool} onSelect={onToolSelect} />
+              <ToolButton name="circuit" icon={Workflow} currentTool={currentTool} onSelect={onToolSelect} />
             </div>
 
             <Separator className="my-4" />

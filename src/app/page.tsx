@@ -6,7 +6,7 @@ import { Header } from "@/components/header";
 import { Toolbox } from "@/components/toolbox";
 import { Canvas } from "@/components/canvas";
 import { PropertiesPanel } from "@/components/properties-panel";
-import type { Furniture, Room, Annotation, Measurement, BaseItem, Surface, Point } from "@/lib/types";
+import type { Furniture, Room, Annotation, Measurement, BaseItem, Surface, Point, Wiring } from "@/lib/types";
 import { ScalePanel } from "@/components/scale-panel";
 import { useToast } from "@/hooks/use-toast";
 import { getPolygonBounds, getPolygonCentroid } from "@/lib/geometry";
@@ -71,13 +71,13 @@ const migrateProjectData = (data: any): ProjectData => {
       };
       let room = { ...roomDefaults, ...migratedItem };
       // If width/height are missing, calculate from points
-      if (!room.width || !room.height) {
+      if ((!room.width || !room.height) && room.points.length > 0) {
         const bounds = getPolygonBounds(room.points);
         room.width = bounds.width;
         room.height = bounds.height;
       }
        // If x/y are missing, calculate from points
-      if (!room.x || !room.y) {
+      if ((!room.x || !room.y) && room.points.length > 0) {
         const centroid = getPolygonCentroid(room.points);
         room.x = centroid.x;
         room.y = centroid.y;
@@ -211,6 +211,10 @@ export default function Home() {
   const addMeasurement = (newMeasurement: Measurement) => {
     setItems(prev => [...prev, newMeasurement]);
   }
+  
+  const addWiring = (newWiring: Wiring) => {
+    setItems(prev => [...prev, newWiring]);
+  }
 
   const updateItem = (item: BaseItem) => {
     setItems(prev => prev.map(i => i.id === item.id ? item : i));
@@ -285,7 +289,7 @@ export default function Home() {
 
           setItems(prev => [...prev, newItem]);
           
-          if (newItem.type !== 'measurement' && newItem.type !== 'surface') {
+          if (newItem.type !== 'measurement' && newItem.type !== 'surface' && newItem.type !== 'wiring') {
              setSelectedItem(newItem);
           }
           toast({ title: "Pasted", description: `Item pasted successfully.`});
@@ -312,7 +316,7 @@ export default function Home() {
           onImageUpload={setBackgroundImage}
         />
         <main className="flex-1 relative">
-           {(tool === 'measure' || tool === 'draw-room') && <ScalePanel tool={tool}/>}
+           {(tool === 'measure' || tool === 'draw-room' || tool === 'circuit') && <ScalePanel tool={tool}/>}
           <Canvas
             canvasApiRef={canvasApiRef}
             tool={tool}
@@ -326,6 +330,7 @@ export default function Home() {
             setTool={setTool}
             onAddRoom={addRoom}
             onAddMeasurement={addMeasurement}
+            onAddWiring={addWiring}
           />
         </main>
         <PropertiesPanel

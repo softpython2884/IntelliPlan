@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Eye, EyeOff, Sofa, Square, MessageSquare, Ruler, PenTool, ChevronUp, ChevronDown } from "lucide-react";
+import { Eye, EyeOff, Sofa, Square, MessageSquare, Ruler, PenTool, ChevronUp, ChevronDown, Workflow } from "lucide-react";
 import type { BaseItem } from "@/lib/types";
 
 interface LayersPanelProps {
@@ -19,6 +19,7 @@ const itemIcons = {
     annotation: MessageSquare,
     measurement: Ruler,
     surface: PenTool,
+    wiring: Workflow,
 };
 
 export function LayersPanel({ items, selectedItem, onSelectItem, onToggleVisibility, onReorderItem }: LayersPanelProps) {

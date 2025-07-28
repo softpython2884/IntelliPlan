@@ -73,7 +73,7 @@ export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox
     if (item && tool === 'select') {
         onSelectItem(item);
         
-        if (item.type === 'measurement' || item.type === 'surface') {
+        if (item.type === 'measurement' || item.type === 'surface' || item.type === 'wiring') {
            return;
         }
 

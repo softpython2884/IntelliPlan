@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useImperativeHandle } from 'react';
-import type { Room, Furniture, Annotation, Point, Measurement, BaseItem, Surface } from '@/lib/types';
+import type { Room, Furniture, Annotation, Point, Measurement, BaseItem, Surface, Wiring } from '@/lib/types';
 import { useDraggable } from '@/hooks/use-draggable';
 import { cn } from '@/lib/utils';
 import { getDistance, formatDistance, getPolygonCentroid, getPolygonBounds } from '@/lib/geometry';
@@ -19,6 +19,7 @@ interface CanvasProps {
   setTool: (tool: string) => void;
   onAddRoom: (room: Room) => void;
   onAddMeasurement: (measurement: Measurement) => void;
+  onAddWiring: (wiring: Wiring) => void;
 }
 
 const surfaceColors: Record<Surface['surfaceType'], string> = {
@@ -78,11 +79,12 @@ export function Canvas({
   setTool,
   onAddRoom,
   onAddMeasurement,
+  onAddWiring,
 }: CanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, width: 800, height: 600 });
-  const [isMeasuring, setIsMeasuring] = useState(false);
-  const [currentMeasurementPoints, setCurrentMeasurementPoints] = useState<Point[]>([]);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [currentDrawingPoints, setCurrentDrawingPoints] = useState<Point[]>([]);
   const [previewPoint, setPreviewPoint] = useState<Point | null>(null);
   const [isResizing, setIsResizing] = useState<{item: Room, pointIndex: number} | null>(null);
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0, x: 0, y: 0 });
@@ -145,7 +147,7 @@ export function Canvas({
       setCurrentRoomPoints([]);
     } else if (tool !== 'draw-room' && isDrawingRoom) {
       // If tool changed, cancel drawing
-      cancelDrawing();
+      cancelRoomDrawing();
     }
   }, [tool, isDrawingRoom]);
 
@@ -155,7 +157,7 @@ export function Canvas({
             finalizeRoom();
         }
         if (e.key === 'Escape' && isDrawingRoom) {
-            cancelDrawing();
+            cancelRoomDrawing();
         }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -188,37 +190,48 @@ export function Canvas({
   const handleMouseDown = (e: React.MouseEvent, item?: BaseItem, pointIndex?: number) => {
     const point = getSVGPoint(e);
     
-    if (tool === 'measure') {
-       if (!isMeasuring) {
-         setIsMeasuring(true);
-         setCurrentMeasurementPoints([point]);
+    if (tool === 'measure' || tool === 'circuit') {
+       if (!isDrawing) {
+         setIsDrawing(true);
+         setCurrentDrawingPoints([point]);
          setPreviewPoint(point);
        } else {
-         const startPoint = currentMeasurementPoints[0];
-         // Find if there is already a reference measurement
-         const isFirstMeasurement = !items.some(i => i.type === 'measurement' && i.isReference);
+         const startPoint = currentDrawingPoints[0];
+         if (tool === 'measure') {
+           const isFirstMeasurement = !items.some(i => i.type === 'measurement' && i.isReference);
 
-         const newMeasurement: Measurement = {
-           id: `measure-${Date.now()}`,
-           type: 'measurement',
-           start: startPoint,
-           end: point,
-           visible: true,
-           isReference: isFirstMeasurement,
-           realLength: isFirstMeasurement ? 1 : undefined,
-         };
-         onAddMeasurement(newMeasurement);
-         onSelectItem(newMeasurement);
+           const newMeasurement: Measurement = {
+             id: `measure-${Date.now()}`,
+             type: 'measurement',
+             start: startPoint,
+             end: point,
+             visible: true,
+             isReference: isFirstMeasurement,
+             realLength: isFirstMeasurement ? 1 : undefined,
+           };
+           onAddMeasurement(newMeasurement);
+           onSelectItem(newMeasurement);
 
-         if (isFirstMeasurement) {
-             const pixelLength = getDistance(startPoint, point);
-             if (pixelLength > 0) {
-               setScale({ pixels: pixelLength, meters: 1 });
-             }
+           if (isFirstMeasurement) {
+               const pixelLength = getDistance(startPoint, point);
+               if (pixelLength > 0) {
+                 setScale({ pixels: pixelLength, meters: 1 });
+               }
+           }
+         } else if (tool === 'circuit') {
+            const newWiring: Wiring = {
+              id: `wiring-${Date.now()}`,
+              type: 'wiring',
+              start: startPoint,
+              end: point,
+              visible: true,
+            };
+            onAddWiring(newWiring);
+            onSelectItem(newWiring);
          }
          
-         setIsMeasuring(false);
-         setCurrentMeasurementPoints([]);
+         setIsDrawing(false);
+         setCurrentDrawingPoints([]);
          setPreviewPoint(null);
          setTool('select');
        }
@@ -237,7 +250,9 @@ export function Canvas({
 
   const handleMouseMove = (e: React.MouseEvent | MouseEvent) => {
     const point = getSVGPoint(e as React.MouseEvent);
-    if ((tool === 'measure' && isMeasuring) || (isDrawingRoom && currentRoomPoints.length > 0)) {
+    if ((tool === 'measure' || tool === 'circuit') && isDrawing) {
+        setPreviewPoint(point);
+    } else if (isDrawingRoom && currentRoomPoints.length > 0) {
         setPreviewPoint(point);
     } else if (isResizing) {
         const room = isResizing.item;
@@ -256,7 +271,7 @@ export function Canvas({
 
   const finalizeRoom = () => {
     if (currentRoomPoints.length < 3) {
-      cancelDrawing();
+      cancelRoomDrawing();
       return;
     }
     const centroid = getPolygonCentroid(currentRoomPoints);
@@ -274,10 +289,10 @@ export function Canvas({
       height: bounds.height
     };
     onAddRoom(newRoom);
-    cancelDrawing();
+    cancelRoomDrawing();
   };
 
-  const cancelDrawing = () => {
+  const cancelRoomDrawing = () => {
     setIsDrawingRoom(false);
     setCurrentRoomPoints([]);
     setPreviewPoint(null);
@@ -287,7 +302,7 @@ export function Canvas({
 
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget || (e.target as SVGElement).tagName === 'image' || ((e.target as SVGElement).tagName === 'rect' && !(e.target as SVGElement).hasAttribute('data-item-id'))) {
-        if (!isDrawingRoom && tool !== 'measure') onSelectItem(null);
+        if (!isDrawingRoom && tool !== 'measure' && tool !== 'circuit') onSelectItem(null);
     }
   };
 
@@ -311,6 +326,7 @@ export function Canvas({
   const annotations = allItems.filter(i => i.type === 'annotation') as Annotation[];
   const measurements = allItems.filter(i => i.type === 'measurement') as Measurement[];
   const surfaces = allItems.filter(i => i.type === 'surface') as Surface[];
+  const wirings = allItems.filter(i => i.type === 'wiring') as Wiring[];
   
   const getRoomPath = (room: Room) => {
     if (!room.points || room.points.length === 0) return "";
@@ -402,8 +418,8 @@ export function Canvas({
        <svg ref={svgRef} width="100%" height="100%" viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`} className={cn("w-full h-full", {
         'cursor-grab': tool === 'pan',
         'cursor-grabbing': (tool === 'pan' && (e => e.buttons === 1)),
-        'cursor-crosshair': tool === 'measure' || tool === 'draw-room',
-        'cursor-default': tool !== 'pan' && tool !== 'measure',
+        'cursor-crosshair': tool === 'measure' || tool === 'draw-room' || tool === 'circuit',
+        'cursor-default': tool !== 'pan' && tool !== 'measure' && tool !== 'circuit' && tool !== 'draw-room',
       })}
       onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
       >
@@ -510,6 +526,23 @@ export function Canvas({
             </g>
           ))}
 
+          {wirings.map((line) => {
+            if (!line.visible) return null;
+            const isSelected = selectedItem?.id === line.id;
+            return (
+              <g key={line.id} onMouseDown={(e) => handleMouseDown(e, line)} className="cursor-pointer">
+                <line
+                  x1={line.start.x}
+                  y1={line.start.y}
+                  x2={line.end.x}
+                  y2={line.end.y}
+                  stroke="hsl(var(--ring))"
+                  strokeWidth={(isSelected ? 3 : 2) * zoomFactor}
+                />
+              </g>
+            )
+          })}
+          
           {measurements.map((line) => {
             if (!line.visible || line.isSurface) return null;
             const distance = getDistance(line.start, line.end);
@@ -553,13 +586,22 @@ export function Canvas({
           {selectedItem?.type === 'room' && renderResizeHandles(selectedItem as Room)}
           {selectedItem?.type === 'room' && (isResizing || selectedItem) && renderRoomDimensions(selectedItem as Room)}
           
-          {(isDrawingRoom || (isMeasuring && currentMeasurementPoints.length > 0)) && (
+          {(isDrawing && (tool === 'measure' || tool === 'circuit')) && (
             <g>
-              <path d={getDrawingPath(isDrawingRoom ? currentRoomPoints : currentMeasurementPoints)} fill="none" stroke="hsl(var(--primary))" strokeWidth={2 * zoomFactor} strokeDasharray={`${5*zoomFactor},${5*zoomFactor}`} />
-              {(isDrawingRoom ? currentRoomPoints : currentMeasurementPoints).map((p, i) => (
+              <path d={getDrawingPath(currentDrawingPoints)} fill="none" stroke="hsl(var(--primary))" strokeWidth={2 * zoomFactor} strokeDasharray={`${5*zoomFactor},${5*zoomFactor}`} />
+              {currentDrawingPoints.map((p, i) => (
                 <circle key={i} cx={p.x} cy={p.y} r={4 * zoomFactor} fill={i === 0 ? 'hsl(var(--ring))' : 'hsl(var(--primary))'} />
               ))}
-              {previewPoint && isMeasuring && <text x={previewPoint.x + (10 * zoomFactor)} y={previewPoint.y - (10*zoomFactor)} fill="hsl(var(--foreground))" stroke={"hsl(var(--background))"} strokeWidth={3 * zoomFactor} paintOrder="stroke" fontSize={12*zoomFactor}>{formatDistance(getDistance(currentMeasurementPoints[0], previewPoint), scale)}</text>}
+              {previewPoint && tool === 'measure' && <text x={previewPoint.x + (10 * zoomFactor)} y={previewPoint.y - (10*zoomFactor)} fill="hsl(var(--foreground))" stroke={"hsl(var(--background))"} strokeWidth={3 * zoomFactor} paintOrder="stroke" fontSize={12*zoomFactor}>{formatDistance(getDistance(currentDrawingPoints[0], previewPoint), scale)}</text>}
+            </g>
+          )}
+
+          {isDrawingRoom && (
+            <g>
+              <path d={getDrawingPath(currentRoomPoints)} fill="none" stroke="hsl(var(--primary))" strokeWidth={2 * zoomFactor} strokeDasharray={`${5*zoomFactor},${5*zoomFactor}`} />
+              {currentRoomPoints.map((p, i) => (
+                <circle key={i} cx={p.x} cy={p.y} r={4 * zoomFactor} fill={i === 0 ? 'hsl(var(--ring))' : 'hsl(var(--primary))'} />
+              ))}
             </g>
           )}
 

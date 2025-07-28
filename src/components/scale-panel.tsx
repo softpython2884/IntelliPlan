@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Scale, Milestone } from "lucide-react";
+import { Scale, Milestone, Workflow } from "lucide-react";
 
 interface ScalePanelProps {
   tool: string;
@@ -38,6 +38,21 @@ export function ScalePanel({ tool }: ScalePanelProps) {
           </p>
           <p className="text-xs text-muted-foreground">
             Click on the first point or press 'Enter' to finish the room. Press 'Esc' to cancel.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (tool === 'circuit') {
+    return (
+      <Card className="absolute top-4 left-4 z-10 w-80">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg"><Workflow className="w-5 h-5"/> Drawing Circuit</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Click on two points on the canvas to draw a line representing an electrical circuit.
           </p>
         </CardContent>
       </Card>

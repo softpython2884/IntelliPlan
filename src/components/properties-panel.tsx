@@ -149,6 +149,12 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
             <Textarea id="text" value={selectedItem.text} onChange={(e) => handlePropertyChange('text', e.target.value)} />
           </div>
         )}
+        
+        {selectedItem.type === 'wiring' && (
+          <div className="text-sm text-muted-foreground">
+              <p>Length: {formatDistance(getDistance(selectedItem.start, selectedItem.end), scale)}</p>
+          </div>
+        )}
 
         {(selectedItem.type === 'measurement' && !selectedItem.isSurface) && (
           <>
