@@ -147,8 +147,7 @@ export function Canvas({
     const point = getSVGPoint(e);
     
     if (tool === 'measure') {
-      const isFirstClick = !isMeasuring;
-      if (isFirstClick) {
+      if (!isMeasuring) {
         setIsMeasuring(true);
         const isFirstMeasurement = !items.some(i => i.type === 'measurement' && i.isReference);
         const newId = `measure-${Date.now()}`;
@@ -157,6 +156,15 @@ export function Canvas({
         };
         setCurrentMeasurementId(newId);
         setItems([...items, newLine]);
+      } else {
+         const currentLine = items.find(i => i.id === currentMeasurementId) as Measurement;
+         if(currentLine) {
+            onUpdateItem({ ...currentLine, end: point });
+            onSelectItem(currentLine);
+         }
+         setIsMeasuring(false);
+         setCurrentMeasurementId(null);
+         setTool('select');
       }
     } else if (tool === 'select' && item?.type === 'room' && pointIndex !== undefined) {
       setIsResizing({item: item as Room, pointIndex});
@@ -192,13 +200,6 @@ export function Canvas({
   };
   
   const handleMouseUp = (e: React.MouseEvent) => {
-    if (tool === 'measure' && isMeasuring) {
-      const currentLine = items.find(i => i.id === currentMeasurementId) as Measurement;
-      if(currentLine) onSelectItem(currentLine);
-      setIsMeasuring(false);
-      setCurrentMeasurementId(null);
-      setTool('select');
-    }
     if (isResizing) {
         setIsResizing(null);
     }
@@ -349,13 +350,14 @@ export function Canvas({
             <path d="M 20 0 L 0 0 0 20" fill="none" stroke="hsl(var(--border))" strokeWidth="0.5" />
           </pattern>
         </defs>
-        <rect width="100%" height="100%" fill="url(#grid)" x={viewBox.x} y={viewBox.y} />
-        
-        {backgroundImage && (
-            <image href={backgroundImage} x={imageDimensions.x} y={imageDimensions.y} width={imageDimensions.width} height={imageDimensions.height} style={{opacity: 0.5}} />
-        )}
         
         <g>
+          <rect width="100%" height="100%" fill="url(#grid)" x={viewBox.x} y={viewBox.y} />
+        
+          {backgroundImage && (
+              <image href={backgroundImage} x={imageDimensions.x} y={imageDimensions.y} width={imageDimensions.width} height={imageDimensions.height} style={{opacity: 0.5}} transform={`translate(${viewBox.x}, ${viewBox.y}) scale(${800/viewBox.width})`}/>
+          )}
+          
           {rooms.map((room) => ( room.visible &&
             <g key={room.id} onMouseDown={(e) => handleMouseDown(e, room)} className={tool === 'select' ? 'cursor-move' : ''}>
               <path
@@ -443,9 +445,9 @@ export function Canvas({
                   <text 
                       y={-8 * zoomFactor}
                       textAnchor="middle"
-                      fill={line.isReference ? "hsl(var(--foreground))" : "hsl(var(--destructive), 100%, 100%)"}
-                      stroke={line.isReference ? "hsl(var(--background))" : "hsl(var(--destructive))"}
-                      strokeWidth={line.isReference ? 3 * zoomFactor : 1}
+                      fill={"hsl(var(--destructive))"}
+                      stroke={"hsl(var(--background))"}
+                      strokeWidth={1}
                       paintOrder="stroke"
                       fontSize={12 * zoomFactor}
                       strokeLinecap="butt"
