@@ -18,6 +18,12 @@ interface ProjectData {
 }
 
 const migrateProjectData = (data: any): ProjectData => {
+  // Ensure data is an object and has default top-level properties
+  if (typeof data !== 'object' || data === null) data = {};
+  if (!data.items) data.items = [];
+  if (!data.scale) data.scale = { pixels: 100, meters: 1 };
+  if (!data.backgroundImage) data.backgroundImage = null;
+
   const migratedItems = data.items.map((item: any) => {
     const defaults = {
       visible: true,
@@ -109,13 +115,14 @@ export default function Home() {
         }
         let data: ProjectData = JSON.parse(text);
         
-        // Basic validation
+        // Migrate data first to ensure compatibility
+        data = migrateProjectData(data);
+
+        // Basic validation after migration
         if (!data.items || !data.scale) {
            throw new Error("Invalid project file format.");
         }
         
-        data = migrateProjectData(data);
-
         handleClear(); // Clear existing project
         setItems(data.items || []);
         setScale(data.scale);
