@@ -1,21 +1,20 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { Room, Furniture, Annotation, Point, Measurement } from '@/lib/types';
+import type { BaseItem, Point } from '@/lib/types';
 
 interface DraggableOptions {
   svgRef: React.RefObject<SVGSVGElement>;
   tool: string;
-  onSelectItem: (item: Room | Furniture | Annotation | Measurement | null) => void;
-  onUpdateItem: (item: Room | Furniture | Annotation | Measurement) => void;
+  onSelectItem: (item: BaseItem | null) => void;
+  onUpdateItem: (item: BaseItem) => void;
   viewBox: { x: number, y: number, width: number, height: number };
   setViewBox: React.Dispatch<React.SetStateAction<{ x: number, y: number, width: number, height: number }>>;
   setTool: (tool: string) => void;
-  selectedItem: Room | Furniture | Annotation | Measurement | null;
 }
 
-export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox, setViewBox, setTool, selectedItem }: DraggableOptions) {
-  const [draggingItem, setDraggingItem] = useState<{ item: Room | Furniture | Annotation | Measurement; offset: Point } | null>(null);
+export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox, setViewBox, setTool }: DraggableOptions) {
+  const [draggingItem, setDraggingItem] = useState<{ item: BaseItem; offset: Point } | null>(null);
   const [panning, setPanning] = useState(false);
   const [panStart, setPanStart] = useState<Point>({ x: 0, y: 0 });
 
@@ -23,11 +22,11 @@ export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === ' ' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
         e.preventDefault();
-        setTool('pan');
+        if (tool !== 'pan') setTool('pan');
       }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === ' ' && tool === 'pan') {
+      if (e.key === ' ') {
         setTool('select');
       }
     };
@@ -46,8 +45,7 @@ export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox
     pt.y = e.clientY;
     const ctm = svgRef.current.getScreenCTM();
     if (ctm) {
-      const svgPoint = pt.matrixTransform(ctm.inverse());
-      return { x: svgPoint.x, y: svgPoint.y };
+      return pt.matrixTransform(ctm.inverse());
     }
     return { x: 0, y: 0 };
   };
@@ -56,36 +54,33 @@ export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox
     return { x: e.clientX, y: e.clientY };
   };
 
-  const handleMouseDown = (e: React.MouseEvent, item?: Room | Furniture | Annotation | Measurement) => {
+  const handleMouseDown = (e: React.MouseEvent, item?: BaseItem) => {
+    e.stopPropagation();
     if (tool === 'pan') {
-      e.stopPropagation();
       setPanning(true);
       setPanStart(getClientPoint(e));
       return;
     }
-    if (item && (tool === 'select' || tool === 'measure')) {
-        e.stopPropagation();
+    if (item && tool === 'select') {
         onSelectItem(item);
-        if (tool === 'select') {
-          const point = getSVGPoint(e);
-          let itemPosition: Point;
-          if (item.type === 'measurement') {
-            // Can't drag measurements for now.
-             return;
-          } else {
-            itemPosition = { x: item.x, y: item.y };
-          }
-    
-          setDraggingItem({
-            item,
-            offset: { x: point.x - itemPosition.x, y: point.y - itemPosition.y },
-          });
+        const point = getSVGPoint(e);
+        
+        // Items that are not draggable or have special dragging logic
+        if (item.type === 'measurement' || item.type === 'surface') {
+           return;
         }
+
+        let itemPosition: Point = { x: (item as any).x, y: (item as any).y };
+  
+        setDraggingItem({
+          item,
+          offset: { x: point.x - itemPosition.x, y: point.y - itemPosition.y },
+        });
     }
   };
 
   const handleMouseMove = (e: MouseEvent) => {
-    if (draggingItem && draggingItem.item.type !== 'measurement' && tool === 'select') {
+    if (draggingItem && tool === 'select' && 'x' in draggingItem.item) {
       const point = getSVGPoint(e);
       const newX = point.x - draggingItem.offset.x;
       const newY = point.y - draggingItem.offset.y;
@@ -111,8 +106,8 @@ export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox
   };
   
   useEffect(() => {
-    const onMove = (e: MouseEvent) => handleMouseMove(e)
-    const onUp = () => handleMouseUp()
+    const onMove = (e: MouseEvent) => handleMouseMove(e);
+    const onUp = () => handleMouseUp();
     
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
@@ -121,7 +116,7 @@ export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     }
-  },[draggingItem, panning, panStart])
+  }, [draggingItem, panning, panStart, viewBox.width, onUpdateItem, setViewBox]);
 
 
   return { handleMouseDown };

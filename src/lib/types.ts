@@ -5,7 +5,7 @@ export interface Point {
 
 export interface BaseItem {
   id: string;
-  type: 'room' | 'furniture' | 'annotation' | 'measurement';
+  type: 'room' | 'furniture' | 'annotation' | 'measurement' | 'surface';
   visible?: boolean;
 }
 
@@ -41,4 +41,13 @@ export interface Measurement extends BaseItem {
     end: Point;
     isReference?: boolean;
     realLength?: number; // in meters
+}
+
+export type SurfaceType = 'wall' | 'window' | 'door' | 'other';
+
+export interface Surface extends BaseItem {
+  type: 'surface';
+  points: Point[];
+  surfaceType: SurfaceType;
+  thickness: number; // in pixels
 }

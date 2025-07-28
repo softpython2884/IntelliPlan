@@ -2,9 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Eye, EyeOff, Sofa, Square, MessageSquare, Ruler } from "lucide-react";
+import { Eye, EyeOff, Sofa, Square, MessageSquare, Ruler, PenTool } from "lucide-react";
 import type { BaseItem } from "@/lib/types";
-import { cn } from "@/lib/utils";
 
 interface LayersPanelProps {
   items: BaseItem[];
@@ -17,10 +16,17 @@ const itemIcons = {
     furniture: Sofa,
     annotation: MessageSquare,
     measurement: Ruler,
+    surface: PenTool,
 };
 
 export function LayersPanel({ items, onSelectItem, onToggleVisibility }: LayersPanelProps) {
   const reversedItems = [...items].reverse();
+
+  const getLayerName = (item: BaseItem) => {
+    if ('name' in item && item.name) return item.name;
+    if (item.type === 'surface') return `${item.surfaceType.charAt(0).toUpperCase() + item.surfaceType.slice(1)} Surface`;
+    return item.type.charAt(0).toUpperCase() + item.type.slice(1);
+  }
 
   return (
     <div className="p-2">
@@ -32,7 +38,7 @@ export function LayersPanel({ items, onSelectItem, onToggleVisibility }: LayersP
           )}
           {reversedItems.map((item) => {
             const Icon = itemIcons[item.type];
-            const name = 'name' in item ? item.name : item.type;
+            const name = getLayerName(item);
             return (
               <div
                 key={item.id}

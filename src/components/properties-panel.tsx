@@ -5,12 +5,13 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, Eye, EyeOff } from "lucide-react";
-import type { Room, Furniture, Annotation, Measurement, BaseItem } from "@/lib/types";
+import { Trash2 } from "lucide-react";
+import type { BaseItem, Surface } from "@/lib/types";
 import { AIPanel } from "./ai-panel";
 import { ScrollArea } from "./ui/scroll-area";
-import { getDistance, formatDistance } from "@/lib/geometry";
+import { getDistance } from "@/lib/geometry";
 import { LayersPanel } from "./layers-panel";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 interface PropertiesPanelProps {
   selectedItem: BaseItem | null;
@@ -18,8 +19,8 @@ interface PropertiesPanelProps {
   onDeleteItem: (item: BaseItem | null) => void;
   onSelectItem: (item: BaseItem | null) => void;
   allItems: BaseItem[];
-  allFurniture: Furniture[];
-  rooms: Room[];
+  allFurniture: any[];
+  rooms: any[];
 }
 
 export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, allItems, onSelectItem, allFurniture, rooms }: PropertiesPanelProps) {
@@ -120,6 +121,37 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, allI
             )}
           </div>
         )}
+        
+        {selectedItem.type === 'surface' && (
+            <>
+              <div>
+                <Label htmlFor="surfaceType">Surface Type</Label>
+                <Select
+                  value={selectedItem.surfaceType}
+                  onValueChange={(value: Surface['surfaceType']) => handlePropertyChange('surfaceType', value)}
+                >
+                  <SelectTrigger id="surfaceType">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="wall">Wall</SelectItem>
+                    <SelectItem value="window">Window</SelectItem>
+                    <SelectItem value="door">Door</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="thickness">Thickness (px)</Label>
+                <Input
+                  id="thickness"
+                  type="number"
+                  value={selectedItem.thickness}
+                  onChange={(e) => handlePropertyChange('thickness', parseInt(e.target.value))}
+                />
+              </div>
+            </>
+          )}
 
       </div>
     );

@@ -6,7 +6,7 @@ import { Header } from "@/components/header";
 import { Toolbox } from "@/components/toolbox";
 import { Canvas } from "@/components/canvas";
 import { PropertiesPanel } from "@/components/properties-panel";
-import type { Furniture, Room, Annotation, Measurement, BaseItem } from "@/lib/types";
+import type { Furniture, Room, Annotation, Measurement, BaseItem, Surface } from "@/lib/types";
 import { ScalePanel } from "@/components/scale-panel";
 
 export default function Home() {
@@ -15,8 +15,9 @@ export default function Home() {
   const [furniture, setFurniture] = useState<Furniture[]>([]);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
+  const [surfaces, setSurfaces] = useState<Surface[]>([]);
   const [scale, setScale] = useState({ pixels: 100, meters: 2 });
-  const [selectedItem, setSelectedItem] = useState<Room | Furniture | Annotation | Measurement | null>(null);
+  const [selectedItem, setSelectedItem] = useState<BaseItem | null>(null);
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
 
   const handleClear = () => {
@@ -24,6 +25,7 @@ export default function Home() {
     setFurniture([]);
     setAnnotations([]);
     setMeasurements([]);
+    setSurfaces([]);
     setSelectedItem(null);
     setBackgroundImage(null);
   };
@@ -81,13 +83,15 @@ export default function Home() {
       setAnnotations(annotations.map(a => a.id === item.id ? item as Annotation : a));
     } else if (item.type === 'measurement') {
       setMeasurements(measurements.map(m => m.id === item.id ? item as Measurement : m));
+    } else if (item.type === 'surface') {
+        setSurfaces(surfaces.map(s => s.id === item.id ? item as Surface : s));
     }
     if(selectedItem?.id === item.id) {
         setSelectedItem(item as any);
     }
   };
 
-  const allItems = [...rooms, ...furniture, ...annotations, ...measurements];
+  const allItems = [...rooms, ...furniture, ...annotations, ...measurements, ...surfaces];
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground font-body">
@@ -105,11 +109,14 @@ export default function Home() {
            {tool === 'measure' && <ScalePanel />}
           <Canvas
             tool={tool}
-            rooms={rooms}
-            furniture={furniture}
-            annotations={annotations}
-            measurements={measurements}
-            setMeasurements={setMeasurements}
+            items={allItems}
+            setItems={(newItems) => {
+                setRooms(newItems.filter(i => i.type === 'room') as Room[]);
+                setFurniture(newItems.filter(i => i.type === 'furniture') as Furniture[]);
+                setAnnotations(newItems.filter(i => i.type === 'annotation') as Annotation[]);
+                setMeasurements(newItems.filter(i => i.type === 'measurement') as Measurement[]);
+                setSurfaces(newItems.filter(i => i.type === 'surface') as Surface[]);
+            }}
             scale={scale}
             setScale={setScale}
             selectedItem={selectedItem}
@@ -122,13 +129,13 @@ export default function Home() {
         <PropertiesPanel
           selectedItem={selectedItem}
           onUpdateItem={updateItem}
-          onSelectItem={setSelectedItem}
           onDeleteItem={(item) => {
             if (!item) return;
             if (item.type === 'room') setRooms(rooms.filter(r => r.id !== item.id));
             if (item.type === 'furniture') setFurniture(furniture.filter(f => f.id !== item.id));
             if (item.type === 'annotation') setAnnotations(annotations.filter(a => a.id !== item.id));
             if (item.type === 'measurement') setMeasurements(measurements.filter(m => m.id !== item.id));
+            if (item.type === 'surface') setSurfaces(surfaces.filter(s => s.id !== item.id));
             setSelectedItem(null);
           }}
           allItems={allItems}
