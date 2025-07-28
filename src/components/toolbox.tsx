@@ -1,8 +1,8 @@
 "use client";
-import { MousePointer, Ruler, Square, Sofa, MessageSquare, Upload, Bed, Lamp, Tv, Hand, LampCeiling, Power, ToggleLeft, Armchair, Book, Coffee, LampDesk, CaseLower } from "lucide-react";
+import { MousePointer, Ruler, Square, Upload, Hand, LampCeiling, Power, ToggleLeft, MessageSquare } from "lucide-react";
 import type { FC } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,17 +17,12 @@ interface ToolboxProps {
 }
 
 const furnitureItems = [
-  { name: 'Sofa', width: 200, height: 90, icon: Sofa, category: 'furniture' },
-  { name: 'Armchair', width: 80, height: 90, icon: Armchair, category: 'furniture' },
-  { name: 'Coffee Table', width: 120, height: 60, icon: Coffee, category: 'furniture' },
-  { name: 'TV', width: 140, height: 10, icon: Tv, category: 'furniture' },
-  { name: 'Double Bed', width: 160, height: 200, icon: Bed, category: 'furniture' },
-  { name: 'Nightstand', width: 50, height: 40, icon: CaseLower, category: 'furniture' },
-  { name: 'Dining Table', width: 180, height: 90, icon: () => <div className="w-full h-full border-2 rounded-lg border-current" />, category: 'furniture' },
-  { name: 'Chair', width: 50, height: 50, icon: () => <div className="w-full h-full border-2 rounded-md border-current" />, category: 'furniture' },
-  { name: 'Desk', width: 140, height: 70, icon: LampDesk, category: 'furniture' },
-  { name: 'Bookcase', width: 90, height: 30, icon: Book, category: 'furniture' },
-  { name: 'Floor Lamp', width: 40, height: 40, icon: Lamp, category: 'furniture' },
+  { name: 'Rectangle', width: 200, height: 90, icon: () => <div className="w-full h-full rounded-md bg-primary/80" />, category: 'furniture' },
+  { name: 'Square', width: 80, height: 80, icon: () => <div className="w-full h-full rounded-md bg-secondary-foreground/20" />, category: 'furniture' },
+  { name: 'Small Rectangle', width: 120, height: 60, icon: () => <div className="w-full h-full rounded-md bg-accent/80" />, category: 'furniture' },
+  { name: 'Slim Rectangle', width: 140, height: 10, icon: () => <div className="w-full h-full rounded-md bg-destructive/60" />, category: 'furniture' },
+  { name: 'Circle', width: 60, height: 60, icon: () => <div className="w-full h-full rounded-full bg-blue-300/80" />, category: 'furniture' },
+  { name: 'Small Square', width: 50, height: 50, icon: () => <div className="w-full h-full rounded-md bg-green-300/80" />, category: 'furniture' },
 ];
 
 const electricalItems = [
@@ -86,7 +81,7 @@ export function Toolbox({ currentTool, onToolSelect, onAddFurniture, onAddAnnota
             <Separator className="my-4" />
 
             <h3 className="mb-2 text-sm font-semibold text-muted-foreground">Electrical</h3>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {electricalItems.map((item) => (
                    <ItemButton key={item.name} item={item} onAddItem={onAddFurniture} />
                 ))}
@@ -112,10 +107,12 @@ function ItemButton({ item, onAddItem }: ItemButtonProps) {
                 onClick={() => onAddItem(item)}
                 className={cn(
                     "flex flex-col items-center justify-center p-2 border rounded-lg aspect-square hover:bg-accent hover:text-accent-foreground transition-colors",
-                     item.category === 'electrical' ? 'bg-blue-100/20' : ''
+                     item.category === 'electrical' ? 'bg-blue-100/20' : 'bg-secondary/30'
                 )}
                 >
-                <item.icon className="w-8 h-8 mb-1" />
+                <div className="w-8 h-8 mb-1 flex items-center justify-center">
+                  <item.icon />
+                </div>
                 <span className="text-xs text-center">{item.name}</span>
                 </button>
             </TooltipTrigger>
