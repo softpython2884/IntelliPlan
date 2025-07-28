@@ -28,7 +28,7 @@ const surfaceColors: Record<Surface['surfaceType'], string> = {
   other: 'hsl(var(--accent) / 0.8)',
 };
 
-const ElectricalIcon = ({ item, isSelected, zoomFactor }: { item: Furniture, isSelected: boolean, zoomFactor: number }) => {
+const ElectricalIcon = ({ item, isSelected, zoomFactor, scale }: { item: Furniture, isSelected: boolean, zoomFactor: number, scale: { pixels: number, meters: number } }) => {
     const pixelWidth = (item.width / 100) / scale.meters * scale.pixels;
     const pixelHeight = (item.height / 100) / scale.meters * scale.pixels;
 
@@ -457,7 +457,7 @@ export function Canvas({
               
               if(item.category === 'electrical') {
                 return <g key={item.id} onMouseDown={(e) => handleMouseDown(e, item)} className={tool === 'select' ? 'cursor-move' : ''}>
-                   <ElectricalIcon item={item} isSelected={isSelected} zoomFactor={zoomFactor} />
+                   <ElectricalIcon item={item} isSelected={isSelected} zoomFactor={zoomFactor} scale={scale} />
                 </g>
               }
 
