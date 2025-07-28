@@ -175,11 +175,12 @@ export function Canvas({
   const handleMouseMove = (e: React.MouseEvent) => {
     const point = getSVGPoint(e);
     if (tool === 'measure' && isMeasuring && currentMeasurementId) {
-      const currentLine = items.find(i => i.id === currentMeasurementId) as Measurement;
-      if (currentLine) {
-        const updatedLine = { ...currentLine, end: point };
-        onUpdateItem(updatedLine);
-      }
+      setItems(prevItems => prevItems.map(item => {
+        if (item.id === currentMeasurementId) {
+          return { ...item, end: point } as Measurement;
+        }
+        return item;
+      }));
     } else if (isResizing) {
         const room = isResizing.item;
         const newPoints = [...room.points];
@@ -192,9 +193,8 @@ export function Canvas({
   
   const handleMouseUp = (e: React.MouseEvent) => {
     if (tool === 'measure' && isMeasuring) {
-      const point = getSVGPoint(e);
       const currentLine = items.find(i => i.id === currentMeasurementId) as Measurement;
-      if(currentLine) onSelectItem(currentLine)
+      if(currentLine) onSelectItem(currentLine);
       setIsMeasuring(false);
       setCurrentMeasurementId(null);
       setTool('select');
@@ -297,7 +297,7 @@ export function Canvas({
   const renderRoomDimensions = (room: Room) => {
     const offset = 15 * zoomFactor;
     const textStyle = {
-      fontSize: `${12 * zoomFactor}px`,
+      fontSize: `${Math.max(8, 12 * zoomFactor)}px`,
       fill: "hsl(var(--foreground))",
       textAnchor: "middle" as const,
       paintOrder: "stroke" as const,
@@ -320,9 +320,13 @@ export function Canvas({
 
       const textX = midPoint.x + offset * Math.cos(perpAngle);
       const textY = midPoint.y + offset * Math.sin(perpAngle);
+      
+      const textAngle = (angle * 180 / Math.PI) % 360;
+      const displayAngle = (textAngle > 90 && textAngle < 270) ? textAngle + 180 : textAngle;
+
 
       return (
-        <text key={i} x={textX} y={textY} {...textStyle} transform={`rotate(${angle * 180 / Math.PI}, ${textX}, ${textY})`}>
+        <text key={i} x={textX} y={textY} {...textStyle} transform={`rotate(${displayAngle}, ${textX}, ${textY})`}>
           {formatDistance(distance, scale)}
         </text>
       )
@@ -439,11 +443,11 @@ export function Canvas({
                   <text 
                       y={-8 * zoomFactor}
                       textAnchor="middle"
-                      fill={line.isReference ? "hsl(var(--foreground))" : "hsl(var(--destructive))"}
-                      fontSize={12 * zoomFactor}
+                      fill={line.isReference ? "hsl(var(--foreground))" : "hsl(var(--destructive), 100%, 100%)"}
+                      stroke={line.isReference ? "hsl(var(--background))" : "hsl(var(--destructive))"}
+                      strokeWidth={line.isReference ? 3 * zoomFactor : 1}
                       paintOrder="stroke"
-                      stroke="hsl(var(--background))"
-                      strokeWidth={3 * zoomFactor}
+                      fontSize={12 * zoomFactor}
                       strokeLinecap="butt"
                       strokeLinejoin="miter"
                       className="font-semibold select-none"

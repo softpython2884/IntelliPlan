@@ -86,7 +86,8 @@ export default function Home() {
     setSurfaces(prev => [...prev, newSurface]);
   };
 
-  const allItems = [...rooms, ...furniture, ...annotations, ...measurements, ...surfaces];
+  // Correct layering order for rendering and for the layers panel
+  const allItems = [...rooms, ...surfaces, ...furniture, ...annotations, ...measurements];
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground font-body">
