@@ -11,22 +11,14 @@ import { ScalePanel } from "@/components/scale-panel";
 import { useToast } from "@/hooks/use-toast";
 
 interface ProjectData {
-  rooms: Room[];
-  furniture: Furniture[];
-  annotations: Annotation[];
-  measurements: Measurement[];
-  surfaces: Surface[];
+  items: BaseItem[];
   scale: { pixels: number; meters: number };
   backgroundImage: string | null;
 }
 
 export default function Home() {
   const [tool, setTool] = useState("select");
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [furniture, setFurniture] = useState<Furniture[]>([]);
-  const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  const [measurements, setMeasurements] = useState<Measurement[]>([]);
-  const [surfaces, setSurfaces] = useState<Surface[]>([]);
+  const [items, setItems] = useState<BaseItem[]>([]);
   const [scale, setScale] = useState({ pixels: 100, meters: 1 }); // Default scale
   const [selectedItem, setSelectedItem] = useState<BaseItem | null>(null);
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
@@ -36,11 +28,7 @@ export default function Home() {
 
 
   const handleClear = () => {
-    setRooms([]);
-    setFurniture([]);
-    setAnnotations([]);
-    setMeasurements([]);
-    setSurfaces([]);
+    setItems([]);
     setSelectedItem(null);
     setBackgroundImage(null);
     setScale({ pixels: 100, meters: 1 });
@@ -48,11 +36,7 @@ export default function Home() {
 
   const handleExport = () => {
     const projectData: ProjectData = {
-      rooms,
-      furniture,
-      annotations,
-      measurements,
-      surfaces,
+      items,
       scale,
       backgroundImage
     };
@@ -83,16 +67,12 @@ export default function Home() {
         const data: ProjectData = JSON.parse(text);
         
         // Basic validation
-        if (!data.rooms || !data.furniture || !data.scale) {
+        if (!data.items || !data.scale) {
            throw new Error("Invalid project file format.");
         }
 
         handleClear(); // Clear existing project
-        setRooms(data.rooms);
-        setFurniture(data.furniture);
-        setAnnotations(data.annotations || []);
-        setMeasurements(data.measurements || []);
-        setSurfaces(data.surfaces || []);
+        setItems(data.items || []);
         setScale(data.scale);
         setBackgroundImage(data.backgroundImage || null);
         toast({ title: "Success", description: "Project imported successfully." });
@@ -109,7 +89,7 @@ export default function Home() {
 
 
   const addRoom = (newRoom: Room) => {
-    setRooms([...rooms, newRoom]);
+    setItems(prev => [...prev, newRoom]);
     setSelectedItem(newRoom);
     setTool('select');
   };
@@ -130,7 +110,7 @@ export default function Home() {
       shape: item.shape,
       color: item.color,
     };
-    setFurniture([...furniture, newFurniture]);
+    setItems(prev => [...prev, newFurniture]);
     setSelectedItem(newFurniture);
   };
   
@@ -144,48 +124,50 @@ export default function Home() {
       text: 'New Note',
       visible: true,
     };
-    setAnnotations([...annotations, newAnnotation]);
+    setItems(prev => [...prev, newAnnotation]);
     setSelectedItem(newAnnotation);
   }
   
   const addMeasurement = (newMeasurement: Measurement) => {
-    setMeasurements([...measurements, newMeasurement]);
+    setItems(prev => [...prev, newMeasurement]);
   }
 
   const updateItem = (item: BaseItem) => {
-    const updater = (prevItems: BaseItem[]) => prevItems.map(i => i.id === item.id ? item : i);
+    setItems(prev => prev.map(i => i.id === item.id ? item : i));
     
-    if (item.type === 'room') {
-      setRooms(updater as any);
-    } else if (item.type === 'furniture') {
-      setFurniture(updater as any);
-    } else if (item.type === 'annotation') {
-      setAnnotations(updater as any);
-    } else if (item.type === 'measurement') {
-      setMeasurements(updater as any);
-    } else if (item.type === 'surface') {
-        setSurfaces(updater as any);
-    }
-
     if(selectedItem?.id === item.id) {
         setSelectedItem(item as any);
     }
   };
   
   const addSurface = (newSurface: Surface) => {
-    setSurfaces(prev => [...prev, newSurface]);
+    setItems(prev => [...prev, newSurface]);
   };
 
   const deleteItem = (item: BaseItem | null) => {
     if (!item) return;
-    if (item.type === 'room') setRooms(rooms.filter(r => r.id !== item.id));
-    if (item.type === 'furniture') setFurniture(furniture.filter(f => f.id !== item.id));
-    if (item.type === 'annotation') setAnnotations(annotations.filter(a => a.id !== item.id));
-    if (item.type === 'measurement') setMeasurements(measurements.filter(m => m.id !== item.id));
-    if (item.type === 'surface') setSurfaces(surfaces.filter(s => s.id !== item.id));
+    setItems(items.filter(i => i.id !== item.id));
     setSelectedItem(null);
   }
   
+  const handleReorderItem = (itemId: string, direction: 'up' | 'down') => {
+    const index = items.findIndex(item => item.id === itemId);
+    if (index === -1) return;
+
+    const newItems = [...items];
+    const [item] = newItems.splice(index, 1);
+    
+    if (direction === 'up') {
+        const newIndex = Math.min(items.length - 1, index + 1);
+        newItems.splice(newIndex, 0, item);
+    } else {
+        const newIndex = Math.max(0, index - 1);
+        newItems.splice(newIndex, 0, item);
+    }
+    
+    setItems(newItems);
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isTextInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
@@ -221,9 +203,7 @@ export default function Home() {
             newItem.y += 10;
           }
 
-          if (newItem.type === 'room') setRooms(prev => [...prev, newItem as Room]);
-          if (newItem.type === 'furniture') setFurniture(prev => [...prev, newItem as Furniture]);
-          if (newItem.type === 'annotation') setAnnotations(prev => [...prev, newItem as Annotation]);
+          setItems(prev => [...prev, newItem]);
           
           if (newItem.type !== 'measurement' && newItem.type !== 'surface') {
              setSelectedItem(newItem);
@@ -237,7 +217,8 @@ export default function Home() {
   }, [selectedItem, deleteItem, clipboard]);
 
 
-  const allItems = [...rooms, ...surfaces, ...furniture, ...annotations, ...measurements];
+  const rooms = items.filter(i => i.type === 'room') as Room[];
+  const furniture = items.filter(i => i.type === 'furniture') as Furniture[];
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground font-body">
@@ -255,7 +236,7 @@ export default function Home() {
           <Canvas
             canvasApiRef={canvasApiRef}
             tool={tool}
-            items={allItems}
+            items={items}
             scale={scale}
             setScale={setScale}
             selectedItem={selectedItem}
@@ -272,7 +253,8 @@ export default function Home() {
           onUpdateItem={updateItem}
           onDeleteItem={deleteItem}
           onSelectItem={setSelectedItem}
-          allItems={allItems}
+          allItems={items}
+          onReorderItem={handleReorderItem}
           allFurniture={furniture}
           rooms={rooms}
           onAddSurface={addSurface}

@@ -2,13 +2,15 @@
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Eye, EyeOff, Sofa, Square, MessageSquare, Ruler, PenTool } from "lucide-react";
+import { Eye, EyeOff, Sofa, Square, MessageSquare, Ruler, PenTool, ChevronUp, ChevronDown } from "lucide-react";
 import type { BaseItem } from "@/lib/types";
 
 interface LayersPanelProps {
   items: BaseItem[];
+  selectedItem: BaseItem | null;
   onSelectItem: (item: BaseItem | null) => void;
   onToggleVisibility: (item: BaseItem) => void;
+  onReorderItem: (itemId: string, direction: 'up' | 'down') => void;
 }
 
 const itemIcons = {
@@ -19,7 +21,7 @@ const itemIcons = {
     surface: PenTool,
 };
 
-export function LayersPanel({ items, onSelectItem, onToggleVisibility }: LayersPanelProps) {
+export function LayersPanel({ items, selectedItem, onSelectItem, onToggleVisibility, onReorderItem }: LayersPanelProps) {
   const reversedItems = [...items].reverse();
 
   const getLayerName = (item: BaseItem) => {
@@ -38,15 +40,17 @@ export function LayersPanel({ items, onSelectItem, onToggleVisibility }: LayersP
           {reversedItems.length === 0 && (
             <p className="p-2 text-xs text-center text-muted-foreground">The canvas is empty.</p>
           )}
-          {reversedItems.map((item) => {
+          {reversedItems.map((item, index) => {
             if (item.type === 'measurement' && item.isSurface) return null; // Don't show converted measurements
 
             const Icon = itemIcons[item.type];
             const name = getLayerName(item);
+            const isSelected = selectedItem?.id === item.id;
+
             return (
               <div
                 key={item.id}
-                className="flex items-center justify-between rounded-md hover:bg-accent group"
+                className={`flex items-center justify-between rounded-md group ${isSelected ? 'bg-accent' : 'hover:bg-accent/50'}`}
               >
                 <Button
                   variant="ghost"
@@ -56,17 +60,37 @@ export function LayersPanel({ items, onSelectItem, onToggleVisibility }: LayersP
                   <Icon className="w-4 h-4 mr-2" />
                   <span className="truncate text-sm">{name}</span>
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleVisibility({ ...item, visible: !item.visible });
-                  }}
-                >
-                  {item.visible ?? true ? <Eye className="w-4 h-4 text-muted-foreground" /> : <EyeOff className="w-4 h-4 text-muted-foreground/50" />}
-                </Button>
+                <div className="flex items-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => { e.stopPropagation(); onReorderItem(item.id, 'up'); }}
+                      disabled={index === 0}
+                    >
+                      <ChevronUp className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => { e.stopPropagation(); onReorderItem(item.id, 'down'); }}
+                      disabled={index === reversedItems.length - 1}
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleVisibility({ ...item, visible: !item.visible });
+                      }}
+                    >
+                      {item.visible ?? true ? <Eye className="w-4 h-4 text-muted-foreground" /> : <EyeOff className="w-4 h-4 text-muted-foreground/50" />}
+                    </Button>
+                </div>
               </div>
             );
           })}

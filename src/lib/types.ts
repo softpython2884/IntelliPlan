@@ -59,5 +59,3 @@ export interface Surface extends BaseItem {
   surfaceType: SurfaceType;
   thickness: number; // in pixels
 }
-
-    

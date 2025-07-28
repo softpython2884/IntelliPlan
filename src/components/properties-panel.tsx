@@ -25,9 +25,10 @@ interface PropertiesPanelProps {
   onAddSurface: (surface: Surface) => void;
   scale: { pixels: number, meters: number };
   onScaleChange: (scale: { pixels: number, meters: number }) => void;
+  onReorderItem: (itemId: string, direction: 'up' | 'down') => void;
 }
 
-export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSelectItem, allItems, allFurniture, rooms, onAddSurface, scale, onScaleChange }: PropertiesPanelProps) {
+export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSelectItem, allItems, allFurniture, rooms, onAddSurface, scale, onScaleChange, onReorderItem }: PropertiesPanelProps) {
   const [activeTab, setActiveTab] = useState("properties");
   
   const handlePropertyChange = (prop: string, value: any) => {
@@ -218,7 +219,7 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
               {renderProperties()}
           </TabsContent>
           <TabsContent value="layers" className="mt-0">
-              <LayersPanel items={allItems} onSelectItem={onSelectItem} onToggleVisibility={onUpdateItem} />
+              <LayersPanel items={allItems} selectedItem={selectedItem} onSelectItem={onSelectItem} onToggleVisibility={onUpdateItem} onReorderItem={onReorderItem} />
           </TabsContent>
           <TabsContent value="ai" className="mt-0">
             <AIPanel allFurniture={allFurniture} rooms={rooms} />
