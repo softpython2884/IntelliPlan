@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from 'react';
 import type { Room, Furniture, Annotation, Point, Measurement, BaseItem, Surface } from '@/lib/types';
 import { useDraggable } from '@/hooks/use-draggable';
 import { cn } from '@/lib/utils';
-import { getDistance, formatDistance } from '@/lib/geometry';
+import { getDistance, formatDistance, getPolygonCentroid } from '@/lib/geometry';
 
 interface CanvasProps {
   tool: string;
@@ -17,6 +17,7 @@ interface CanvasProps {
   onUpdateItem: (item: BaseItem) => void;
   backgroundImage: string | null;
   setTool: (tool: string) => void;
+  onAddRoom: (room: Room) => void;
 }
 
 const surfaceColors: Record<Surface['surfaceType'], string> = {
@@ -37,13 +38,17 @@ export function Canvas({
   onUpdateItem,
   backgroundImage,
   setTool,
+  onAddRoom,
 }: CanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, width: 800, height: 600 });
   const [isMeasuring, setIsMeasuring] = useState(false);
   const [currentMeasurementId, setCurrentMeasurementId] = useState<string | null>(null);
-  const [isResizing, setIsResizing] = useState<{pointIndex: number, corner: string} | null>(null);
+  const [isResizing, setIsResizing] = useState<{item: Room, pointIndex: number} | null>(null);
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+  const [isDrawingRoom, setIsDrawingRoom] = useState(false);
+  const [currentRoomPoints, setCurrentRoomPoints] = useState<Point[]>([]);
+  const [previewPoint, setPreviewPoint] = useState<Point | null>(null);
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver(entries => {
@@ -67,6 +72,31 @@ export function Canvas({
       img.src = backgroundImage;
     }
   }, [backgroundImage]);
+
+  useEffect(() => {
+    if (tool === 'draw-room' && !isDrawingRoom) {
+      setIsDrawingRoom(true);
+      setCurrentRoomPoints([]);
+    } else if (tool !== 'draw-room' && isDrawingRoom) {
+      // If tool changed, cancel drawing
+      setIsDrawingRoom(false);
+      setCurrentRoomPoints([]);
+      setPreviewPoint(null);
+    }
+  }, [tool, isDrawingRoom]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Enter' && isDrawingRoom && currentRoomPoints.length > 2) {
+            finalizeRoom();
+        }
+        if (e.key === 'Escape' && isDrawingRoom) {
+            cancelDrawing();
+        }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDrawingRoom, currentRoomPoints]);
   
   const getSVGPoint = (e: React.MouseEvent | MouseEvent): Point => {
     if (!svgRef.current) return { x: 0, y: 0 };
@@ -91,7 +121,7 @@ export function Canvas({
     selectedItem,
   });
 
-  const handleMouseDown = (e: React.MouseEvent, item?: BaseItem) => {
+  const handleMouseDown = (e: React.MouseEvent, item?: BaseItem, pointIndex?: number) => {
     e.stopPropagation();
     const point = getSVGPoint(e);
     
@@ -104,56 +134,35 @@ export function Canvas({
       };
       setCurrentMeasurementId(newId);
       setItems([...items, newLine]);
+    } else if (tool === 'select' && item?.type === 'room' && pointIndex !== undefined) {
+      setIsResizing({item: item as Room, pointIndex});
+    } else if (tool === 'draw-room' && isDrawingRoom) {
+      // Check if clicking on the first point to close the shape
+      if (currentRoomPoints.length > 2 && getDistance(point, currentRoomPoints[0]) < 10) {
+        finalizeRoom();
+      } else {
+        setCurrentRoomPoints([...currentRoomPoints, point]);
+      }
     } else {
       handleDraggableMouseDown(e, item);
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    const point = getSVGPoint(e);
     if (tool === 'measure' && isMeasuring && currentMeasurementId) {
-      const point = getSVGPoint(e);
       const currentLine = items.find(i => i.id === currentMeasurementId) as Measurement;
       if (currentLine) {
         const updatedLine = { ...currentLine, end: point };
         onUpdateItem(updatedLine);
       }
-    } else if (isResizing && selectedItem?.type === 'room') {
-        const room = selectedItem as Room;
-        const point = getSVGPoint(e);
+    } else if (isResizing) {
+        const room = isResizing.item;
         const newPoints = [...room.points];
-
         newPoints[isResizing.pointIndex] = point;
-        
-        // Adjust adjacent points for rectangular shapes
-        if (room.points.length === 4) { // Assuming a rectangle for now
-          const prevIndex = (isResizing.pointIndex - 1 + 4) % 4;
-          const nextIndex = (isResizing.pointIndex + 1) % 4;
-
-          if (isResizing.corner.includes('top') || isResizing.corner.includes('bottom')) {
-            newPoints[prevIndex].y = point.y;
-            newPoints[nextIndex].y = point.y;
-          }
-          if (isResizing.corner.includes('left') || isResizing.corner.includes('right')) {
-             newPoints[prevIndex].x = point.x;
-             newPoints[nextIndex].x = point.x;
-          }
-          // For corners, need to update two points
-          if(isResizing.corner === 'top-left') {
-            newPoints[3].x = point.x;
-            newPoints[1].y = point.y;
-          } else if(isResizing.corner === 'top-right') {
-            newPoints[0].y = point.y;
-            newPoints[2].x = point.x;
-          } else if(isResizing.corner === 'bottom-left') {
-            newPoints[1].x = point.x;
-            newPoints[3].y = point.y;
-          } else if(isResizing.corner === 'bottom-right') {
-            newPoints[2].y = point.y;
-            newPoints[0].x = point.x;
-          }
-        }
-
         onUpdateItem({ ...room, points: newPoints });
+    } else if (isDrawingRoom) {
+      setPreviewPoint(point);
     }
   };
   
@@ -171,10 +180,33 @@ export function Canvas({
     }
   };
 
+  const finalizeRoom = () => {
+    if (currentRoomPoints.length < 3) {
+      cancelDrawing();
+      return;
+    }
+    const newRoom: Room = {
+      id: `room-${Date.now()}`,
+      type: 'room',
+      points: currentRoomPoints,
+      name: 'New Room',
+      visible: true,
+    };
+    onAddRoom(newRoom);
+    cancelDrawing();
+  };
+
+  const cancelDrawing = () => {
+    setIsDrawingRoom(false);
+    setCurrentRoomPoints([]);
+    setPreviewPoint(null);
+    setTool('select');
+  };
+
 
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget || (e.target as SVGElement).tagName === 'image' || ((e.target as SVGElement).tagName === 'rect' && !(e.target as SVGElement).hasAttribute('data-item-id'))) {
-        onSelectItem(null);
+        if (!isDrawingRoom) onSelectItem(null);
     }
   };
 
@@ -205,17 +237,18 @@ export function Canvas({
     return `${path} Z`;
   };
 
+  const getDrawingRoomPath = () => {
+    if (currentRoomPoints.length === 0) return "";
+    let path = currentRoomPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    if (previewPoint) {
+      path += ` L ${previewPoint.x} ${previewPoint.y}`;
+    }
+    return path;
+  };
 
   const renderResizeHandles = (room: Room) => {
-    const handleSize = 8;
+    const handleSize = 8 / (viewBox.width / 800) ;
     const halfHandle = handleSize / 2;
-    
-    const corners = [
-        { pointIndex: 0, corner: 'top-left' },
-        { pointIndex: 1, corner: 'top-right' },
-        { pointIndex: 2, corner: 'bottom-right' },
-        { pointIndex: 3, corner: 'bottom-left' },
-    ];
     
     return room.points.map((p, index) => (
       <rect
@@ -226,12 +259,9 @@ export function Canvas({
         height={handleSize}
         fill="hsl(var(--ring))"
         stroke="hsl(var(--background))"
-        strokeWidth="1"
-        className="cursor-nwse-resize"
-        onMouseDown={(e) => {
-          e.stopPropagation();
-          setIsResizing({pointIndex: index, corner: corners.find(c=>c.pointIndex === index)?.corner || ''});
-        }}
+        strokeWidth={1 / (viewBox.width / 800)}
+        className="cursor-move"
+        onMouseDown={(e) => handleMouseDown(e, room, index)}
       />
     ));
   };
@@ -250,22 +280,25 @@ export function Canvas({
       className: "font-semibold select-none"
     };
 
-    if (room.points.length !== 4) return null;
+    if (room.points.length < 2) return null;
 
-    const width = getDistance(room.points[0], room.points[1]);
-    const height = getDistance(room.points[1], room.points[2]);
-    const midPointTop = { x: (room.points[0].x + room.points[1].x) / 2, y: (room.points[0].y + room.points[1].y) / 2 };
-    const midPointRight = { x: (room.points[1].x + room.points[2].x) / 2, y: (room.points[1].y + room.points[2].y) / 2 };
-    const angleRight = Math.atan2(room.points[2].y - room.points[1].y, room.points[2].x - room.points[1].x) * 180 / Math.PI;
+    return room.points.map((p1, i) => {
+      const p2 = room.points[(i + 1) % room.points.length];
+      const distance = getDistance(p1, p2);
+      const midPoint = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+      
+      const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+      const perpAngle = angle + Math.PI / 2;
 
-    return (<>
-      <text x={midPointTop.x} y={midPointTop.y - offset} {...textStyle}>
-        {formatDistance(width, scale)}
-      </text>
-      <text x={midPointRight.x + offset} y={midPointRight.y} transform={`rotate(${angleRight}, ${midPointRight.x + offset}, ${midPointRight.y})`} {...textStyle}>
-        {formatDistance(height, scale)}
-      </text>
-    </>);
+      const textX = midPoint.x + offset * Math.cos(perpAngle);
+      const textY = midPoint.y + offset * Math.sin(perpAngle);
+
+      return (
+        <text key={i} x={textX} y={textY} {...textStyle} transform={`rotate(${angle * 180 / Math.PI}, ${textX}, ${textY})`}>
+          {formatDistance(distance, scale)}
+        </text>
+      )
+    })
   };
 
 
@@ -274,7 +307,7 @@ export function Canvas({
        <svg ref={svgRef} width="100%" height="100%" viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`} className={cn("w-full h-full", {
         'cursor-grab': tool === 'pan',
         'cursor-grabbing': (tool === 'pan' && (e => e.buttons === 1)),
-        'cursor-crosshair': tool === 'measure',
+        'cursor-crosshair': tool === 'measure' || tool === 'draw-room',
         'cursor-default': tool !== 'pan' && tool !== 'measure',
       })}
       onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
@@ -301,7 +334,7 @@ export function Canvas({
                 className="transition-all"
                 data-item-id={room.id}
               />
-              <text x={room.points[0].x + 10} y={room.points[0].y + 20} fill="hsl(var(--foreground))" fontSize="12" pointerEvents="none" className="select-none">
+              <text x={getPolygonCentroid(room.points).x} y={getPolygonCentroid(room.points).y} textAnchor='middle' dy=".3em" fill="hsl(var(--foreground))" fontSize="12" pointerEvents="none" className="select-none">
                 {room.name}
               </text>
             </g>
@@ -358,6 +391,7 @@ export function Canvas({
             const midX = (line.start.x + line.end.x) / 2;
             const midY = (line.start.y + line.end.y) / 2;
             const angle = Math.atan2(line.end.y - line.start.y, line.end.x - line.start.x) * 180 / Math.PI;
+            const circleRadius = 3 / (viewBox.width / 800);
 
             return (
             <g key={line.id} onMouseDown={(e) => handleMouseDown(e, line)}>
@@ -367,12 +401,12 @@ export function Canvas({
                 x2={line.end.x}
                 y2={line.end.y}
                 stroke={line.isReference ? "hsl(var(--ring))" : "hsl(var(--destructive))"}
-                strokeWidth={selectedItem?.id === line.id ? 3 : 2}
+                strokeWidth={selectedItem?.id === line.id ? (2 / (viewBox.width / 800)) : (1 / (viewBox.width / 800))}
                 strokeDasharray="5,5"
                 className='cursor-pointer'
               />
-              <circle cx={line.start.x} cy={line.start.y} r="4" fill={line.isReference ? "hsl(var(--ring))" : "hsl(var(--destructive))"} />
-              <circle cx={line.end.x} cy={line.end.y} r="4" fill={line.isReference ? "hsl(var(--ring))" : "hsl(var(--destructive))"} />
+              <circle cx={line.start.x} cy={line.start.y} r={circleRadius} fill={line.isReference ? "hsl(var(--ring))" : "hsl(var(--destructive))"} />
+              <circle cx={line.end.x} cy={line.end.y} r={circleRadius} fill={line.isReference ? "hsl(var(--ring))" : "hsl(var(--destructive))"} />
               <g transform={`translate(${midX}, ${midY}) rotate(${angle})`}>
                   <text 
                       y={-8}
@@ -393,11 +427,18 @@ export function Canvas({
           )})}
           {selectedItem?.type === 'room' && renderResizeHandles(selectedItem as Room)}
           {selectedItem?.type === 'room' && (isResizing || selectedItem) && renderRoomDimensions(selectedItem as Room)}
+          
+          {isDrawingRoom && (
+            <g>
+              <polyline points={getDrawingRoomPath()} fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeDasharray="5,5" />
+              {currentRoomPoints.map((p, i) => (
+                <circle key={i} cx={p.x} cy={p.y} r="4" fill={i === 0 ? 'hsl(var(--ring))' : 'hsl(var(--primary))'} />
+              ))}
+            </g>
+          )}
 
         </g>
       </svg>
     </div>
   );
 }
-
-    

@@ -10,7 +10,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 interface ToolboxProps {
   currentTool: string;
   onToolSelect: (tool: string) => void;
-  onAddRoom: () => void;
   onAddFurniture: (item: { name: string; width: number; height: number; icon: FC<any>}) => void;
   onAddAnnotation: () => void;
   onImageUpload: (url: string) => void;
@@ -25,7 +24,7 @@ const furnitureItems = [
   { name: 'Lamp', width: 40, height: 40, icon: Lamp },
 ];
 
-export function Toolbox({ currentTool, onToolSelect, onAddRoom, onAddFurniture, onAddAnnotation, onImageUpload }: ToolboxProps) {
+export function Toolbox({ currentTool, onToolSelect, onAddFurniture, onAddAnnotation, onImageUpload }: ToolboxProps) {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const url = URL.createObjectURL(e.target.files[0]);
@@ -49,7 +48,7 @@ export function Toolbox({ currentTool, onToolSelect, onAddRoom, onAddFurniture, 
             
             <h3 className="mb-2 text-sm font-semibold text-muted-foreground">Create</h3>
             <div className="space-y-2">
-              <Button variant="outline" className="w-full justify-start" onClick={onAddRoom}><Square className="w-4 h-4 mr-2"/> Add Room</Button>
+              <Button variant="outline" className="w-full justify-start" onClick={() => onToolSelect('draw-room')}><Square className="w-4 h-4 mr-2"/> Add Room</Button>
               <Button variant="outline" className="w-full justify-start" onClick={onAddAnnotation}><MessageSquare className="w-4 h-4 mr-2"/> Add Note</Button>
             </div>
             

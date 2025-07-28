@@ -71,7 +71,7 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
     };
 
     onUpdateItem({ ...measurement, isSurface: true, visible: false }); // Hide original measurement
-    onUpdateItem(newSurface); // This will add it via page state
+    setItems(prev => [...prev, newSurface]); // Add new surface
     onSelectItem(newSurface);
   };
 
@@ -97,15 +97,8 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
         )}
 
         {selectedItem.type === 'room' && (
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label>Width</Label>
-              <p className="text-sm text-muted-foreground">{formatDistance(getDistance(selectedItem.points[0], selectedItem.points[1]), {pixels: 1, meters: 1})}</p>
-            </div>
-            <div>
-              <Label>Height</Label>
-              <p className="text-sm text-muted-foreground">{formatDistance(getDistance(selectedItem.points[1], selectedItem.points[2]), {pixels: 1, meters: 1})}</p>
-            </div>
+          <div>
+            <p className="text-sm text-muted-foreground">This is a custom shape room. Area calculation coming soon.</p>
           </div>
         )}
 

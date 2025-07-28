@@ -24,4 +24,24 @@ export function formatDistance(pixelDistance: number, scale: { pixels: number, m
     return `${realDistance.toFixed(2)} m`;
 }
 
+export function getPolygonCentroid(points: Point[]): Point {
+    let centroid: Point = { x: 0, y: 0 };
+    let signedArea = 0;
+    let x0 = 0; // Current vertex X
+    let y0 = 0; // Current vertex Y
+    let x1 = 0; // Next vertex X
+    let y1 = 0; // Next vertex Y
+    let a = 0;  // Partial signed area
+
+    // For a simple polygon, just find the average of the coordinates
+    if (points.length > 0) {
+        for (const p of points) {
+            centroid.x += p.x;
+            centroid.y += p.y;
+        }
+        centroid.x /= points.length;
+        centroid.y /= points.length;
+    }
     
+    return centroid;
+}

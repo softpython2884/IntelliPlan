@@ -30,21 +30,10 @@ export default function Home() {
     setBackgroundImage(null);
   };
 
-  const addRoom = () => {
-    const newRoom: Room = {
-      id: `room-${Date.now()}`,
-      type: 'room',
-      points: [
-        { x: 50, y: 50 },
-        { x: 450, y: 50 },
-        { x: 450, y: 350 },
-        { x: 50, y: 350 },
-      ],
-      name: 'New Room',
-      visible: true,
-    };
+  const addRoom = (newRoom: Room) => {
     setRooms([...rooms, newRoom]);
     setSelectedItem(newRoom);
+    setTool('select');
   };
 
   const addFurniture = (item: { name: string; width: number; height: number; icon: FC<any> }) => {
@@ -102,13 +91,12 @@ export default function Home() {
         <Toolbox
           currentTool={tool}
           onToolSelect={setTool}
-          onAddRoom={addRoom}
           onAddFurniture={addFurniture}
           onAddAnnotation={addAnnotation}
           onImageUpload={setBackgroundImage}
         />
         <main className="flex-1 relative">
-           {tool === 'measure' && <ScalePanel />}
+           {(tool === 'measure' || tool === 'draw-room') && <ScalePanel tool={tool}/>}
           <Canvas
             tool={tool}
             items={allItems}
@@ -126,6 +114,7 @@ export default function Home() {
             onUpdateItem={updateItem}
             backgroundImage={backgroundImage}
             setTool={setTool}
+            onAddRoom={addRoom}
           />
         </main>
         <PropertiesPanel
