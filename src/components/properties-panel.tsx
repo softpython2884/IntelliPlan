@@ -6,14 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2 } from "lucide-react";
-import type { Room, Furniture, Annotation } from "@/lib/types";
+import type { Room, Furniture, Annotation, Measurement } from "@/lib/types";
 import { AIPanel } from "./ai-panel";
 import { ScrollArea } from "./ui/scroll-area";
+import { getDistance } from "@/lib/geometry";
 
 interface PropertiesPanelProps {
-  selectedItem: Room | Furniture | Annotation | null;
-  onUpdateItem: (item: Room | Furniture | Annotation) => void;
-  onDeleteItem: (item: Room | Furniture | Annotation | null) => void;
+  selectedItem: Room | Furniture | Annotation | Measurement | null;
+  onUpdateItem: (item: Room | Furniture | Annotation | Measurement) => void;
+  onDeleteItem: (item: Room | Furniture | Annotation | Measurement | null) => void;
   allFurniture: Furniture[];
   rooms: Room[];
 }
@@ -29,10 +30,12 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, allF
       return <div className="p-4 text-sm text-center text-muted-foreground">Select an item to see its properties.</div>;
     }
 
+    const typeName = selectedItem.type === 'measurement' ? 'Measurement' : selectedItem.type;
+
     return (
       <div className="p-4 space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="font-semibold capitalize">{selectedItem.type}: {('name' in selectedItem) ? selectedItem.name : ''}</h3>
+          <h3 className="font-semibold capitalize">{typeName}: {('name' in selectedItem) ? selectedItem.name : ''}</h3>
           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => onDeleteItem(selectedItem)}><Trash2 className="w-4 h-4" /></Button>
         </div>
         
@@ -77,6 +80,13 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, allF
           <div>
             <Label htmlFor="text">Note</Label>
             <Textarea id="text" value={selectedItem.text} onChange={(e) => handlePropertyChange('text', e.target.value)} />
+          </div>
+        )}
+
+        {(selectedItem.type === 'measurement') && (
+          <div>
+            <Label>Pixel Length</Label>
+            <p className="text-sm text-muted-foreground">{getDistance(selectedItem.start, selectedItem.end).toFixed(2)}px</p>
           </div>
         )}
 

@@ -6,20 +6,24 @@ import { Header } from "@/components/header";
 import { Toolbox } from "@/components/toolbox";
 import { Canvas } from "@/components/canvas";
 import { PropertiesPanel } from "@/components/properties-panel";
-import type { Furniture, Room, Annotation } from "@/lib/types";
+import type { Furniture, Room, Annotation, Measurement } from "@/lib/types";
+import { ScalePanel } from "@/components/scale-panel";
 
 export default function Home() {
   const [tool, setTool] = useState("select");
   const [rooms, setRooms] = useState<Room[]>([]);
   const [furniture, setFurniture] = useState<Furniture[]>([]);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  const [selectedItem, setSelectedItem] = useState<Room | Furniture | Annotation | null>(null);
+  const [measurements, setMeasurements] = useState<Measurement[]>([]);
+  const [scale, setScale] = useState({ pixels: 100, meters: 2 });
+  const [selectedItem, setSelectedItem] = useState<Room | Furniture | Annotation | Measurement | null>(null);
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
 
   const handleClear = () => {
     setRooms([]);
     setFurniture([]);
     setAnnotations([]);
+    setMeasurements([]);
     setSelectedItem(null);
     setBackgroundImage(null);
   };
@@ -65,13 +69,15 @@ export default function Home() {
     setSelectedItem(newAnnotation);
   }
 
-  const updateItem = (item: Room | Furniture | Annotation) => {
+  const updateItem = (item: Room | Furniture | Annotation | Measurement) => {
     if (item.type === 'room') {
       setRooms(rooms.map(r => r.id === item.id ? item as Room : r));
     } else if (item.type === 'furniture') {
       setFurniture(furniture.map(f => f.id === item.id ? item as Furniture : f));
     } else if (item.type === 'annotation') {
       setAnnotations(annotations.map(a => a.id === item.id ? item as Annotation : a));
+    } else if (item.type === 'measurement') {
+      setMeasurements(measurements.map(m => m.id === item.id ? item as Measurement : m));
     }
     setSelectedItem(item);
   };
@@ -89,11 +95,15 @@ export default function Home() {
           onImageUpload={setBackgroundImage}
         />
         <main className="flex-1 relative">
+           {tool === 'measure' && <ScalePanel scale={scale} setScale={setScale} />}
           <Canvas
             tool={tool}
             rooms={rooms}
             furniture={furniture}
             annotations={annotations}
+            measurements={measurements}
+            setMeasurements={setMeasurements}
+            scale={scale}
             selectedItem={selectedItem}
             onSelectItem={setSelectedItem}
             onUpdateItem={updateItem}
@@ -109,6 +119,7 @@ export default function Home() {
             if (item.type === 'room') setRooms(rooms.filter(r => r.id !== item.id));
             if (item.type === 'furniture') setFurniture(furniture.filter(f => f.id !== item.id));
             if (item.type === 'annotation') setAnnotations(annotations.filter(a => a.id !== item.id));
+            if (item.type === 'measurement') setMeasurements(measurements.filter(m => m.id !== item.id));
             setSelectedItem(null);
           }}
           allFurniture={furniture}
