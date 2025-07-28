@@ -139,43 +139,41 @@ export function Canvas({
   });
 
   const handleMouseDown = (e: React.MouseEvent, item?: BaseItem, pointIndex?: number) => {
-    e.stopPropagation();
     const point = getSVGPoint(e);
     
-    if (tool === 'measure' || (tool === 'select' && e.button === 1)) { // Also allow middle mouse for measure start
-       if (tool === 'measure') {
-         if (!isMeasuring) {
-           setIsMeasuring(true);
-           setCurrentMeasurementPoints([point]);
-           setPreviewPoint(point);
-         } else {
-           const startPoint = currentMeasurementPoints[0];
-           const isFirstMeasurement = !items.some(i => i.type === 'measurement' && i.isReference);
+    if (tool === 'measure') {
+       if (!isMeasuring) {
+         setIsMeasuring(true);
+         setCurrentMeasurementPoints([point]);
+         setPreviewPoint(point);
+       } else {
+         const startPoint = currentMeasurementPoints[0];
+         // Find if there is already a reference measurement
+         const isFirstMeasurement = !items.some(i => i.type === 'measurement' && i.isReference);
 
-           const newMeasurement: Measurement = {
-             id: `measure-${Date.now()}`,
-             type: 'measurement',
-             start: startPoint,
-             end: point,
-             visible: true,
-             isReference: isFirstMeasurement,
-             realLength: isFirstMeasurement ? 1 : undefined,
-           };
-           onAddMeasurement(newMeasurement);
-           onSelectItem(newMeasurement);
+         const newMeasurement: Measurement = {
+           id: `measure-${Date.now()}`,
+           type: 'measurement',
+           start: startPoint,
+           end: point,
+           visible: true,
+           isReference: isFirstMeasurement,
+           realLength: isFirstMeasurement ? 1 : undefined,
+         };
+         onAddMeasurement(newMeasurement);
+         onSelectItem(newMeasurement);
 
-           if (isFirstMeasurement) {
-               const pixelLength = getDistance(startPoint, point);
-               if (pixelLength > 0) {
-                 setScale({ pixels: pixelLength, meters: 1 });
-               }
-           }
-           
-           setIsMeasuring(false);
-           setCurrentMeasurementPoints([]);
-           setPreviewPoint(null);
-           setTool('select');
+         if (isFirstMeasurement) {
+             const pixelLength = getDistance(startPoint, point);
+             if (pixelLength > 0) {
+               setScale({ pixels: pixelLength, meters: 1 });
+             }
          }
+         
+         setIsMeasuring(false);
+         setCurrentMeasurementPoints([]);
+         setPreviewPoint(null);
+         setTool('select');
        }
     } else if (tool === 'select' && item?.type === 'room' && pointIndex !== undefined) {
       setIsResizing({item: item as Room, pointIndex});
@@ -326,7 +324,6 @@ export function Canvas({
       const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
       let perpAngle = angle + Math.PI / 2;
       
-      // Basic check for inside/outside, may need improvement for complex polygons
       const testPoint = {
           x: midPoint.x + Math.cos(perpAngle),
           y: midPoint.y + Math.sin(perpAngle)
@@ -407,30 +404,35 @@ export function Canvas({
             />
           ))}
           
-          {furniture.map((item) => ( item.visible &&
-            <g key={item.id} onMouseDown={(e) => handleMouseDown(e, item)} className={tool === 'select' ? 'cursor-move' : ''} transform={`translate(${item.x}, ${item.y}) rotate(${item.rotation} ${item.width/2} ${item.height/2})`}>
+          {furniture.map((item) => {
+              if (!item.visible) return null;
+              const pixelWidth = (item.width / 100) / scale.meters * scale.pixels;
+              const pixelHeight = (item.height / 100) / scale.meters * scale.pixels;
+
+              return (
+              <g key={item.id} onMouseDown={(e) => handleMouseDown(e, item)} className={tool === 'select' ? 'cursor-move' : ''} transform={`translate(${item.x}, ${item.y}) rotate(${item.rotation} ${pixelWidth/2} ${pixelHeight/2})`}>
               <rect
                 x={0}
                 y={0}
-                width={item.width}
-                height={item.height}
+                width={pixelWidth}
+                height={pixelHeight}
                 fill={selectedItem?.id === item.id ? "hsl(var(--accent) / 0.3)" : "hsl(var(--accent) / 0.6)"}
                 stroke="hsl(var(--accent-foreground))"
                 strokeWidth={selectedItem?.id === item.id ? 2 * zoomFactor : 1 * zoomFactor}
-                rx="4"
+                rx={4 * zoomFactor}
                 className="transition-all"
                 data-item-id={item.id}
               />
-              <text x={item.width / 2} y={item.height / 2} textAnchor="middle" dy=".3em" fill="hsl(var(--accent-foreground))" fontSize={10 * zoomFactor} pointerEvents="none" className="select-none">
+              <text x={pixelWidth / 2} y={pixelHeight / 2} textAnchor="middle" dy=".3em" fill="hsl(var(--accent-foreground))" fontSize={10 * zoomFactor} pointerEvents="none" className="select-none">
                 {item.name}
               </text>
             </g>
-          ))}
+          )})}
 
           {annotations.map((note) => ( note.visible &&
             <g key={note.id} onMouseDown={(e) => handleMouseDown(e, note)} className={tool === 'select' ? 'cursor-move' : ''}>
-              <foreignObject x={note.x} y={note.y} width="120" height="80">
-                  <div className={cn("p-2 text-xs bg-card border rounded-md shadow-md h-full w-full overflow-hidden text-ellipsis select-none", { "bg-card/50": selectedItem?.id === note.id })} style={{ transform: `scale(${zoomFactor})`, transformOrigin: 'top left' }}>
+              <foreignObject x={note.x} y={note.y} width={120 * zoomFactor} height={80 * zoomFactor} style={{overflow: 'visible'}}>
+                  <div className={cn("p-2 text-xs bg-card border rounded-md shadow-md h-full w-full overflow-hidden text-ellipsis select-none", { "border-ring": selectedItem?.id === note.id })} style={{ transform: `scale(${zoomFactor})`, transformOrigin: 'top left', width: '120px', height: '80px' }}>
                     {note.text}
                   </div>
               </foreignObject>
@@ -486,7 +488,7 @@ export function Canvas({
               {(isDrawingRoom ? currentRoomPoints : currentMeasurementPoints).map((p, i) => (
                 <circle key={i} cx={p.x} cy={p.y} r={4 * zoomFactor} fill={i === 0 ? 'hsl(var(--ring))' : 'hsl(var(--primary))'} />
               ))}
-              {previewPoint && isMeasuring && <text x={previewPoint.x + 10} y={previewPoint.y - 10} fill="hsl(var(--foreground))" fontSize={10*zoomFactor}>{formatDistance(getDistance(currentMeasurementPoints[0], previewPoint), scale)}</text>}
+              {previewPoint && isMeasuring && <text x={previewPoint.x + (10 * zoomFactor)} y={previewPoint.y - (10*zoomFactor)} fill="hsl(var(--foreground))" stroke={"hsl(var(--background))"} strokeWidth={3 * zoomFactor} paintOrder="stroke" fontSize={12*zoomFactor}>{formatDistance(getDistance(currentMeasurementPoints[0], previewPoint), scale)}</text>}
             </g>
           )}
 

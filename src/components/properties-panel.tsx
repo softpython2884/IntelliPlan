@@ -43,7 +43,7 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
         // Demote other reference lines
         allItems.forEach(item => {
           if (item.type === 'measurement' && item.id !== selectedItem.id && item.isReference) {
-            onUpdateItem({ ...item, isReference: false });
+            onUpdateItem({ ...item, isReference: false, realLength: undefined });
           }
         });
         return;

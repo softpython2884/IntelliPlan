@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { BaseItem, Point, Room } from '@/lib/types';
 
 interface DraggableOptions {
@@ -16,8 +16,12 @@ interface DraggableOptions {
 
 export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox, setViewBox, setTool, selectedItem }: DraggableOptions) {
   const [draggingItem, setDraggingItem] = useState<{ item: BaseItem; offset: Point } | null>(null);
-  const [panning, setPanning] = useState(false);
-  const [panStart, setPanStart] = useState<Point>({ x: 0, y: 0 });
+  
+  // Use a ref for panning state to avoid re-renders on mousemove
+  const panState = useRef({
+    isPanning: false,
+    startPoint: { x: 0, y: 0 }
+  });
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -56,29 +60,24 @@ export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox
   };
 
   const handleMouseDown = (e: React.MouseEvent, item?: BaseItem) => {
-    // Middle mouse button (button === 1) always initiates panning
-    if (e.button === 1) {
-        e.preventDefault(); // Prevent default middle-click behavior (like autoscroll)
-        setPanning(true);
-        setPanStart(getClientPoint(e));
+    e.stopPropagation();
+
+    // Middle mouse button (button === 1) or pan tool always initiates panning
+    if (e.button === 1 || tool === 'pan') {
+        e.preventDefault(); 
+        panState.current.isPanning = true;
+        panState.current.startPoint = getClientPoint(e);
         return;
     }
 
-    e.stopPropagation();
-    if (tool === 'pan') {
-      setPanning(true);
-      setPanStart(getClientPoint(e));
-      return;
-    }
     if (item && tool === 'select') {
         onSelectItem(item);
-        const point = getSVGPoint(e);
         
-        // Items that are not draggable or have special dragging logic
         if (item.type === 'measurement' || item.type === 'surface') {
            return;
         }
 
+        const point = getSVGPoint(e);
         let itemPosition: Point;
         if (item.type === 'room') {
             itemPosition = { x: item.points[0].x, y: item.points[0].y };
@@ -93,7 +92,7 @@ export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox
     }
   };
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
+  const handleMouseMove = (e: MouseEvent) => {
     if (draggingItem && tool === 'select' && selectedItem) {
       const point = getSVGPoint(e);
       if(selectedItem.type === 'room') {
@@ -110,28 +109,26 @@ export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox
         onUpdateItem(updatedItem);
         setDraggingItem(prev => prev ? { ...prev, item: updatedItem } : null);
       }
-    } else if (panning && svgRef.current) {
+    } else if (panState.current.isPanning && svgRef.current) {
         const clientPoint = getClientPoint(e);
         const scale = viewBox.width / svgRef.current.clientWidth;
 
-        const dx = (clientPoint.x - panStart.x) * scale;
-        const dy = (clientPoint.y - panStart.y) * scale;
+        const dx = (clientPoint.x - panState.current.startPoint.x) * scale;
+        const dy = (clientPoint.y - panState.current.startPoint.y) * scale;
+        
+        panState.current.startPoint = clientPoint;
 
         setViewBox(prev => ({ ...prev, x: prev.x - dx, y: prev.y - dy }));
-        setPanStart(clientPoint);
     }
-  }, [draggingItem, panning, panStart, selectedItem, onUpdateItem, setViewBox, tool, viewBox.width]);
+  };
 
-  const handleMouseUp = useCallback((e: MouseEvent) => {
-    // Stop panning on middle mouse button release
-    if (e.button === 1) {
-        setPanning(false);
-    }
+  const handleMouseUp = (e: MouseEvent) => {
     setDraggingItem(null);
-    setPanning(false);
-  }, []);
+    panState.current.isPanning = false;
+  };
   
   useEffect(() => {
+    // We attach to window to catch mouse events outside the SVG
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     
@@ -139,7 +136,7 @@ export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     }
-  }, [handleMouseMove, handleMouseUp]);
+  }, [draggingItem, selectedItem, onUpdateItem, setViewBox, viewBox.width]); // Keep dependencies minimal but correct
 
 
   return { handleMouseDown };

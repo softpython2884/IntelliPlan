@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { FC } from "react";
 import { Header } from "@/components/header";
 import { Toolbox } from "@/components/toolbox";
@@ -117,8 +117,8 @@ export default function Home() {
       type: 'furniture',
       x: 100,
       y: 100,
-      width: item.width,
-      height: item.height,
+      width: item.width, // in cm
+      height: item.height, // in cm
       name: item.name,
       rotation: 0,
       visible: true,
@@ -177,6 +177,19 @@ export default function Home() {
     if (item.type === 'surface') setSurfaces(surfaces.filter(s => s.id !== item.id));
     setSelectedItem(null);
   }
+  
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            if(selectedItem && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+                deleteItem(selectedItem);
+            }
+        }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedItem, deleteItem]);
+
 
   const allItems = [...rooms, ...surfaces, ...furniture, ...annotations, ...measurements];
 
