@@ -36,7 +36,8 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
     if (selectedItem.type === 'measurement' && prop === 'realLength') {
       const pixelLength = getDistance(selectedItem.start, selectedItem.end);
       if (value > 0) {
-        onScaleChange({ pixels: pixelLength, meters: value });
+        // Convert cm to meters for the scale
+        onScaleChange({ pixels: pixelLength, meters: value / 100 });
         const updatedItem = { ...selectedItem, [prop]: value, isReference: true };
         onUpdateItem(updatedItem);
 
@@ -141,10 +142,10 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
           <>
             <div>
               <Label>Length</Label>
-              <p className="text-sm font-bold">{formatDistance(getDistance(selectedItem.start, selectedItem.end), scale, selectedItem.realLength)}</p>
+              <p className="text-sm font-bold">{formatDistance(getDistance(selectedItem.start, selectedItem.end), scale, selectedItem.realLength ? selectedItem.realLength / 100 : undefined)}</p>
               <div className="mt-4">
-                <Label htmlFor="realLength">Set as Reference Scale: Real Length (m)</Label>
-                <Input id="realLength" type="number" placeholder="e.g. 2.5" step="0.01" value={selectedItem.realLength || ''} onChange={(e) => handlePropertyChange('realLength', parseFloat(e.target.value))} />
+                <Label htmlFor="realLength">Set as Reference Scale: Real Length (cm)</Label>
+                <Input id="realLength" type="number" placeholder="e.g. 90" step="0.1" value={selectedItem.realLength || ''} onChange={(e) => handlePropertyChange('realLength', parseFloat(e.target.value))} />
                  <p className="text-xs text-muted-foreground mt-1">Set this to define the scale for the entire plan. This measurement will turn blue.</p>
               </div>
             </div>

@@ -43,7 +43,7 @@ export interface Measurement extends BaseItem {
     start: Point;
     end: Point;
     isReference?: boolean;
-    realLength?: number; // in meters
+    realLength?: number; // in cm
     isSurface?: boolean;
 }
 
