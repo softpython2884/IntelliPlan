@@ -43,7 +43,7 @@ export function Canvas({
   const svgRef = useRef<SVGSVGElement>(null);
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, width: 800, height: 600 });
   const [isMeasuring, setIsMeasuring] = useState(false);
-  const [currentMeasurementId, setCurrentMeasurementId] = useState<string | null>(null);
+  const [currentMeasurement, setCurrentMeasurement] = useState<Measurement | null>(null);
   const [isResizing, setIsResizing] = useState<{item: Room, pointIndex: number} | null>(null);
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0, x: 0, y: 0 });
   const [isDrawingRoom, setIsDrawingRoom] = useState(false);
@@ -147,25 +147,18 @@ export function Canvas({
     const point = getSVGPoint(e);
     
     if (tool === 'measure') {
-      if (!isMeasuring) {
-        setIsMeasuring(true);
         const isFirstMeasurement = !items.some(i => i.type === 'measurement' && i.isReference);
-        const newId = `measure-${Date.now()}`;
-        const newLine: Measurement = {
-          id: newId, type: 'measurement', start: point, end: point, visible: true, isReference: isFirstMeasurement,
+        const newMeasurement: Measurement = {
+          id: `measure-${Date.now()}`, 
+          type: 'measurement', 
+          start: point, 
+          end: point, 
+          visible: true, 
+          isReference: isFirstMeasurement,
         };
-        setCurrentMeasurementId(newId);
-        setItems([...items, newLine]);
-      } else {
-         const currentLine = items.find(i => i.id === currentMeasurementId) as Measurement;
-         if(currentLine) {
-            onUpdateItem({ ...currentLine, end: point });
-            onSelectItem(currentLine);
-         }
-         setIsMeasuring(false);
-         setCurrentMeasurementId(null);
-         setTool('select');
-      }
+        setIsMeasuring(true);
+        setCurrentMeasurement(newMeasurement);
+        setItems([...items, newMeasurement]);
     } else if (tool === 'select' && item?.type === 'room' && pointIndex !== undefined) {
       setIsResizing({item: item as Room, pointIndex});
     } else if (tool === 'draw-room' && isDrawingRoom) {
@@ -180,15 +173,12 @@ export function Canvas({
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const point = getSVGPoint(e);
-    if (tool === 'measure' && isMeasuring && currentMeasurementId) {
-      setItems(prevItems => prevItems.map(item => {
-        if (item.id === currentMeasurementId) {
-          return { ...item, end: point } as Measurement;
-        }
-        return item;
-      }));
+  const handleMouseMove = (e: React.MouseEvent | MouseEvent) => {
+    const point = getSVGPoint(e as React.MouseEvent);
+    if (tool === 'measure' && isMeasuring && currentMeasurement) {
+      const updatedMeasurement = { ...currentMeasurement, end: point };
+      setCurrentMeasurement(updatedMeasurement);
+      setItems(prevItems => prevItems.map(item => item.id === currentMeasurement.id ? updatedMeasurement : item));
     } else if (isResizing) {
         const room = isResizing.item;
         const newPoints = [...room.points];
@@ -202,6 +192,12 @@ export function Canvas({
   const handleMouseUp = (e: React.MouseEvent) => {
     if (isResizing) {
         setIsResizing(null);
+    }
+    if (isMeasuring && currentMeasurement) {
+        onSelectItem(currentMeasurement);
+        setIsMeasuring(false);
+        setCurrentMeasurement(null);
+        setTool('select');
     }
   };
 
@@ -355,7 +351,7 @@ export function Canvas({
           <rect width="100%" height="100%" fill="url(#grid)" x={viewBox.x} y={viewBox.y} />
         
           {backgroundImage && (
-              <image href={backgroundImage} x={imageDimensions.x} y={imageDimensions.y} width={imageDimensions.width} height={imageDimensions.height} style={{opacity: 0.5}} transform={`translate(${viewBox.x}, ${viewBox.y}) scale(${800/viewBox.width})`}/>
+              <image href={backgroundImage} x={imageDimensions.x} y={imageDimensions.y} width={imageDimensions.width} height={imageDimensions.height} style={{opacity: 0.5}} />
           )}
           
           {rooms.map((room) => ( room.visible &&
@@ -445,9 +441,9 @@ export function Canvas({
                   <text 
                       y={-8 * zoomFactor}
                       textAnchor="middle"
-                      fill={"hsl(var(--destructive))"}
+                      fill={line.isReference ? "hsl(var(--ring))" : "hsl(var(--destructive))"}
                       stroke={"hsl(var(--background))"}
-                      strokeWidth={1}
+                      strokeWidth={3 * zoomFactor}
                       paintOrder="stroke"
                       fontSize={12 * zoomFactor}
                       strokeLinecap="butt"

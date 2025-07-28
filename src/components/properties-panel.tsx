@@ -34,10 +34,6 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
     if (selectedItem.type === 'measurement' && prop === 'realLength') {
       const pixelLength = getDistance(selectedItem.start, selectedItem.end);
       if (value > 0) {
-        const newScale = {
-          pixels: pixelLength,
-          meters: value,
-        };
         // This is a bit of a hack, we should probably lift the scale state up
         // and have a dedicated function to update it.
         // For now, we update the measurement and expect the page to handle the scale.
@@ -75,7 +71,7 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
     onAddSurface(newSurface); // Add new surface
     onSelectItem(newSurface);
   };
-
+  
   const renderProperties = () => {
     if (!selectedItem) {
       return <LayersPanel items={allItems} onSelectItem={onSelectItem} onToggleVisibility={onUpdateItem} />;
