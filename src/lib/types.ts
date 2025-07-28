@@ -29,6 +29,7 @@ export interface Furniture extends BaseItem {
   height: number;
   name: string;
   rotation: number;
+  category: 'furniture' | 'electrical';
 }
 
 export interface Annotation extends BaseItem {

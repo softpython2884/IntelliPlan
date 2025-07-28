@@ -32,6 +32,7 @@ export default function Home() {
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const { toast } = useToast();
   const canvasApiRef = useRef<{ getCenter: () => Point }>(null);
+  const [clipboard, setClipboard] = useState<BaseItem | null>(null);
 
 
   const handleClear = () => {
@@ -113,7 +114,7 @@ export default function Home() {
     setTool('select');
   };
 
-  const addFurniture = (item: { name: string; width: number; height: number; icon: FC<any> }) => {
+  const addFurniture = (item: { name: string; width: number; height: number; icon: FC<any>, category: 'furniture' | 'electrical' }) => {
     const center = canvasApiRef.current?.getCenter() || { x: 100, y: 100 };
     const newFurniture: Furniture = {
       id: `furniture-${Date.now()}`,
@@ -125,6 +126,7 @@ export default function Home() {
       name: item.name,
       rotation: 0,
       visible: true,
+      category: item.category,
     };
     setFurniture([...furniture, newFurniture]);
     setSelectedItem(newFurniture);
@@ -183,15 +185,45 @@ export default function Home() {
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Delete' || e.key === 'Backspace') {
-            if(selectedItem && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
-                deleteItem(selectedItem);
-            }
+      const isTextInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+          if(selectedItem && !isTextInput) {
+              deleteItem(selectedItem);
+          }
+      }
+      
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        if (selectedItem && !isTextInput) {
+          setClipboard(selectedItem);
+          toast({ title: "Copied", description: `${('name' in selectedItem ? selectedItem.name : selectedItem.type)} copied to clipboard.`});
         }
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+        if (clipboard && !isTextInput) {
+          const newItem = { ...clipboard, id: `${clipboard.type}-${Date.now()}` };
+          if ('x' in newItem && 'y' in newItem) {
+            newItem.x += 10;
+            newItem.y += 10;
+          } else if (newItem.type === 'room') {
+            newItem.points = newItem.points.map(p => ({ x: p.x + 10, y: p.y + 10 }));
+          }
+
+          if (newItem.type === 'room') setRooms(prev => [...prev, newItem as Room]);
+          if (newItem.type === 'furniture') setFurniture(prev => [...prev, newItem as Furniture]);
+          if (newItem.type === 'annotation') setAnnotations(prev => [...prev, newItem as Annotation]);
+          
+          if (newItem.type !== 'measurement' && newItem.type !== 'surface') {
+             setSelectedItem(newItem);
+          }
+          toast({ title: "Pasted", description: `Item pasted successfully.`});
+        }
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedItem, deleteItem]);
+  }, [selectedItem, deleteItem, clipboard]);
 
 
   const allItems = [...rooms, ...surfaces, ...furniture, ...annotations, ...measurements];
