@@ -5,23 +5,14 @@ export function getDistance(p1: Point, p2: Point): number {
 }
 
 export function formatDistance(pixelDistance: number, scale: { pixels: number, meters: number }, overrideMeters?: number): string {
-    if (overrideMeters !== undefined) {
-      if (overrideMeters < 1) {
-        return `${(overrideMeters * 100).toFixed(1)} cm`;
-      }
-      return `${overrideMeters.toFixed(2)} m`;
-    }
+    const meters = overrideMeters !== undefined ? overrideMeters : (pixelDistance / scale.pixels) * scale.meters;
 
     if (!scale || scale.pixels === 0 || !scale.meters) return `${pixelDistance.toFixed(0)}px`;
-    const realDistance = (pixelDistance / scale.pixels) * scale.meters;
-    
-    if (realDistance < 0.01) {
-        return `${(realDistance * 1000).toFixed(1)} mm`;
+
+    if (meters < 1) {
+      return `${(meters * 100).toFixed(1)} cm`;
     }
-    if (realDistance < 1) {
-        return `${(realDistance * 100).toFixed(1)} cm`;
-    }
-    return `${realDistance.toFixed(2)} m`;
+    return `${meters.toFixed(2)} m`;
 }
 
 export function getPolygonCentroid(points: Point[]): Point {
