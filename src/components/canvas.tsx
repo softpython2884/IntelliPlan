@@ -41,6 +41,7 @@ export function Canvas({
   const svgRef = useRef<SVGSVGElement>(null);
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, width: 800, height: 600 });
   const [isMeasuring, setIsMeasuring] = useState(false);
+  const [isResizing, setIsResizing] = useState<string | null>(null);
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver(entries => {
@@ -101,21 +102,39 @@ export function Canvas({
         const updatedLine = { ...currentLine, end: point };
         onUpdateItem(updatedLine);
       }
+    } else if (isResizing && selectedItem?.type === 'room') {
+        const room = selectedItem as Room;
+        const point = getSVGPoint(e);
+        let { x, y, width, height } = room;
+
+        if (isResizing.includes('right')) {
+            width = Math.max(10, point.x - x);
+        }
+        if (isResizing.includes('left')) {
+            width = Math.max(10, width + (x - point.x));
+            x = point.x;
+        }
+        if (isResizing.includes('bottom')) {
+            height = Math.max(10, point.y - y);
+        }
+        if (isResizing.includes('top')) {
+            height = Math.max(10, height + (y - point.y));
+            y = point.y;
+        }
+        onUpdateItem({ ...room, x, y, width, height });
     }
   };
   
   const handleMouseUp = (e: React.MouseEvent) => {
     if (tool === 'measure' && isMeasuring) {
       const point = getSVGPoint(e);
-      // find the line we just finished drawing
-      const currentLine = items.find(i => i.type === 'measurement' && (i as Measurement).end.x === point.x && (i as Measurement).end.y === point.y) as Measurement;
-      
-      if(currentLine) {
-        onSelectItem(currentLine)
-      }
-
+      const currentLine = items.find(i => i.type === 'measurement' && (i as Measurement).end.x === (i as Measurement).end.x && (i as Measurement).end.y === (i as Measurement).end.y) as Measurement;
+      if(currentLine) onSelectItem(currentLine)
       setIsMeasuring(false);
       setTool('select');
+    }
+    if (isResizing) {
+        setIsResizing(null);
     }
   };
 
@@ -147,24 +166,85 @@ export function Canvas({
   const measurements = allItems.filter(i => i.type === 'measurement') as Measurement[];
   const surfaces = allItems.filter(i => i.type === 'surface') as Surface[];
 
+  const renderResizeHandles = (room: Room) => {
+    const handleSize = 8;
+    const halfHandle = handleSize / 2;
+    const positions = {
+      'top-left': { x: room.x - halfHandle, y: room.y - halfHandle, cursor: 'nwse-resize' },
+      'top-right': { x: room.x + room.width - halfHandle, y: room.y - halfHandle, cursor: 'nesw-resize' },
+      'bottom-left': { x: room.x - halfHandle, y: room.y + room.height - halfHandle, cursor: 'nesw-resize' },
+      'bottom-right': { x: room.x + room.width - halfHandle, y: room.y + room.height - halfHandle, cursor: 'nwse-resize' },
+      'top': { x: room.x + room.width / 2 - halfHandle, y: room.y - halfHandle, cursor: 'ns-resize' },
+      'bottom': { x: room.x + room.width / 2 - halfHandle, y: room.y + room.height - halfHandle, cursor: 'ns-resize' },
+      'left': { x: room.x - halfHandle, y: room.y + room.height / 2 - halfHandle, cursor: 'ew-resize' },
+      'right': { x: room.x + room.width - halfHandle, y: room.y + room.height / 2 - halfHandle, cursor: 'ew-resize' },
+    };
+
+    return Object.entries(positions).map(([key, pos]) => (
+      <rect
+        key={key}
+        x={pos.x}
+        y={pos.y}
+        width={handleSize}
+        height={handleSize}
+        fill="hsl(var(--ring))"
+        stroke="hsl(var(--background))"
+        strokeWidth="1"
+        className="cursor-pointer"
+        style={{ cursor: pos.cursor }}
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          setIsResizing(key);
+        }}
+      />
+    ));
+  };
+  
+  const renderRoomDimensions = (room: Room) => {
+    const offset = 15;
+    const textStyle = {
+      fontSize: "12px",
+      fill: "hsl(var(--foreground))",
+      textAnchor: "middle" as const,
+      paintOrder: "stroke" as const,
+      stroke: "hsl(var(--background))",
+      strokeWidth:"3px",
+      strokeLinecap: "butt" as const,
+      strokeLinejoin: "miter" as const,
+      className: "font-semibold select-none"
+    };
+
+    return (<>
+      <text x={room.x + room.width / 2} y={room.y - offset} {...textStyle}>
+        {formatDistance(room.width, scale)}
+      </text>
+      <text x={room.x + room.width + offset} y={room.y + room.height / 2} transform={`rotate(90, ${room.x + room.width + offset}, ${room.y + room.height/2})`} {...textStyle}>
+        {formatDistance(room.height, scale)}
+      </text>
+    </>);
+  };
+
+
   return (
-    <div className="w-full h-full bg-secondary/30" onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseDown={handleMouseDown} onClick={handleCanvasClick} onWheel={handleWheel}>
-      <svg ref={svgRef} width="100%" height="100%" viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`} className={cn("w-full h-full", {
+    <div className="w-full h-full bg-secondary/30" onClick={handleCanvasClick} onWheel={handleWheel}>
+       <svg ref={svgRef} width="100%" height="100%" viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`} className={cn("w-full h-full", {
         'cursor-grab': tool === 'pan',
         'cursor-grabbing': (tool === 'pan' && (e => e.buttons === 1)),
         'cursor-crosshair': tool === 'measure',
         'cursor-default': tool !== 'pan' && tool !== 'measure',
-      })}>
+      })}
+      onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
+      >
         <defs>
           <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
             <path d="M 20 0 L 0 0 0 20" fill="none" stroke="hsl(var(--border))" strokeWidth="0.5" />
           </pattern>
         </defs>
-        <rect width="100%" height="100%" fill="url(#grid)" x={viewBox.x} y={viewBox.y} transform={`scale(${viewBox.width/800}, ${viewBox.height/600})`}/>
+        <rect width="100%" height="100%" fill="url(#grid)" x={viewBox.x} y={viewBox.y} />
         
         <g>
           {backgroundImage && (
-             <image href={backgroundImage} x="0" y="0" width={viewBox.width} height={viewBox.height} style={{opacity: 0.5, transform: `translate(${viewBox.x}px, ${viewBox.y}px)`}} />
+             <image href={backgroundImage} x={viewBox.x} y={viewBox.y} width={viewBox.width} height={viewBox.height} style={{opacity: 0.5}} />
           )}
 
           {rooms.map((room) => ( room.visible &&
@@ -270,6 +350,8 @@ export function Canvas({
               </g>
             </g>
           )})}
+          {selectedItem?.type === 'room' && renderResizeHandles(selectedItem as Room)}
+          {selectedItem?.type === 'room' && (isResizing || selectedItem) && renderRoomDimensions(selectedItem as Room)}
 
         </g>
       </svg>
