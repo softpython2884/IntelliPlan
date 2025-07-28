@@ -1,6 +1,6 @@
 # IntelliPlan 📝
 
-IntelliPlan is a modern, web-based 2D floor plan design tool built with Next.js and Firebase Studio. It empowers users to create detailed and accurate floor plans, arrange furniture, map out electrical circuits, and leverage AI-powered suggestions to optimize their space intelligently.
+IntelliPlan is a modern, web-based 2D floor plan design tool built with Next.js. It empowers users to create detailed and accurate floor plans, arrange furniture, map out electrical circuits, and leverage AI-powered suggestions to optimize their space intelligently.
 
 ## ✨ Features
 
@@ -30,8 +30,8 @@ IntelliPlan is a modern, web-based 2D floor plan design tool built with Next.js 
 - **UI:** [React](https://react.dev/), [TypeScript](https://www.typescriptlang.org/)
 - **Styling:** [Tailwind CSS](https://tailwindcss.com/)
 - **UI Components:** [ShadCN/UI](https://ui.shadcn.com/)
-- **AI Integration:** [Genkit (via Firebase)](https://firebase.google.com/docs/genkit)
-- **Development Environment:** [Firebase Studio](https://firebase.google.com/docs/studio)
+- **AI Integration:** [Genkit](https://genkit.dev/)
+
 
 ## 🚀 Getting Started
 
