@@ -22,9 +22,10 @@ interface PropertiesPanelProps {
   allItems: BaseItem[];
   allFurniture: any[];
   rooms: any[];
+  onAddSurface: (surface: Surface) => void;
 }
 
-export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSelectItem, allItems, allFurniture, rooms }: PropertiesPanelProps) {
+export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSelectItem, allItems, allFurniture, rooms, onAddSurface }: PropertiesPanelProps) {
   const [activeTab, setActiveTab] = useState("properties");
   
   const handlePropertyChange = (prop: string, value: any) => {
@@ -71,7 +72,7 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
     };
 
     onUpdateItem({ ...measurement, isSurface: true, visible: false }); // Hide original measurement
-    setItems(prev => [...prev, newSurface]); // Add new surface
+    onAddSurface(newSurface); // Add new surface
     onSelectItem(newSurface);
   };
 

@@ -81,6 +81,10 @@ export default function Home() {
         setSelectedItem(item as any);
     }
   };
+  
+  const addSurface = (newSurface: Surface) => {
+    setSurfaces(prev => [...prev, newSurface]);
+  };
 
   const allItems = [...rooms, ...furniture, ...annotations, ...measurements, ...surfaces];
 
@@ -133,6 +137,7 @@ export default function Home() {
           allItems={allItems}
           allFurniture={furniture}
           rooms={rooms}
+          onAddSurface={addSurface}
         />
       </div>
     </div>

@@ -411,7 +411,7 @@ export function Canvas({
                   <text 
                       y={-8}
                       textAnchor="middle"
-                      fill={line.isReference ? "hsl(var(--ring))" : "hsl(var(--destructive-foreground))"}
+                      fill={line.isReference ? "hsl(var(--ring))" : "hsl(var(--destructive))"}
                       fontSize="12"
                       paintOrder="stroke"
                       stroke="hsl(var(--background))"
