@@ -11,10 +11,7 @@ export interface BaseItem {
 
 export interface Room extends BaseItem {
   type: 'room';
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  points: Point[];
   name: string;
 }
 

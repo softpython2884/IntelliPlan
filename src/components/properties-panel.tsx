@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2 } from "lucide-react";
-import type { BaseItem, Measurement, Surface } from "@/lib/types";
+import type { BaseItem, Measurement, Surface, Room } from "@/lib/types";
 import { AIPanel } from "./ai-panel";
 import { ScrollArea } from "./ui/scroll-area";
-import { getDistance } from "@/lib/geometry";
+import { getDistance, formatDistance } from "@/lib/geometry";
 import { LayersPanel } from "./layers-panel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useState } from "react";
@@ -96,7 +96,20 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
           </div>
         )}
 
-        {('width' in selectedItem) && ('height' in selectedItem) && (
+        {selectedItem.type === 'room' && (
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label>Width</Label>
+              <p className="text-sm text-muted-foreground">{formatDistance(getDistance(selectedItem.points[0], selectedItem.points[1]), {pixels: 1, meters: 1})}</p>
+            </div>
+            <div>
+              <Label>Height</Label>
+              <p className="text-sm text-muted-foreground">{formatDistance(getDistance(selectedItem.points[1], selectedItem.points[2]), {pixels: 1, meters: 1})}</p>
+            </div>
+          </div>
+        )}
+
+        {selectedItem.type === 'furniture' && ('width' in selectedItem) && ('height' in selectedItem) && (
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label htmlFor="width">Width (cm)</Label>

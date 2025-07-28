@@ -41,7 +41,8 @@ export function Canvas({
   const svgRef = useRef<SVGSVGElement>(null);
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, width: 800, height: 600 });
   const [isMeasuring, setIsMeasuring] = useState(false);
-  const [isResizing, setIsResizing] = useState<string | null>(null);
+  const [isResizing, setIsResizing] = useState<{pointIndex: number, corner: string} | null>(null);
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver(entries => {
@@ -55,6 +56,16 @@ export function Canvas({
     }
     return () => resizeObserver.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (backgroundImage) {
+      const img = new Image();
+      img.onload = () => {
+        setImageDimensions({ width: img.width, height: img.height });
+      };
+      img.src = backgroundImage;
+    }
+  }, [backgroundImage]);
   
   const getSVGPoint = (e: React.MouseEvent | MouseEvent): Point => {
     if (!svgRef.current) return { x: 0, y: 0 };
@@ -76,6 +87,7 @@ export function Canvas({
     viewBox,
     setViewBox,
     setTool,
+    selectedItem,
   });
 
   const handleMouseDown = (e: React.MouseEvent, item?: BaseItem) => {
@@ -105,23 +117,40 @@ export function Canvas({
     } else if (isResizing && selectedItem?.type === 'room') {
         const room = selectedItem as Room;
         const point = getSVGPoint(e);
-        let { x, y, width, height } = room;
+        const newPoints = [...room.points];
 
-        if (isResizing.includes('right')) {
-            width = Math.max(10, point.x - x);
+        newPoints[isResizing.pointIndex] = point;
+        
+        // Adjust adjacent points for rectangular shapes
+        if (room.points.length === 4) { // Assuming a rectangle for now
+          const prevIndex = (isResizing.pointIndex - 1 + 4) % 4;
+          const nextIndex = (isResizing.pointIndex + 1) % 4;
+
+          if (isResizing.corner.includes('top') || isResizing.corner.includes('bottom')) {
+            newPoints[prevIndex].y = point.y;
+            newPoints[nextIndex].y = point.y;
+          }
+          if (isResizing.corner.includes('left') || isResizing.corner.includes('right')) {
+             newPoints[prevIndex].x = point.x;
+             newPoints[nextIndex].x = point.x;
+          }
+          // For corners, need to update two points
+          if(isResizing.corner === 'top-left') {
+            newPoints[3].x = point.x;
+            newPoints[1].y = point.y;
+          } else if(isResizing.corner === 'top-right') {
+            newPoints[0].y = point.y;
+            newPoints[2].x = point.x;
+          } else if(isResizing.corner === 'bottom-left') {
+            newPoints[1].x = point.x;
+            newPoints[3].y = point.y;
+          } else if(isResizing.corner === 'bottom-right') {
+            newPoints[2].y = point.y;
+            newPoints[0].x = point.x;
+          }
         }
-        if (isResizing.includes('left')) {
-            width = Math.max(10, width + (x - point.x));
-            x = point.x;
-        }
-        if (isResizing.includes('bottom')) {
-            height = Math.max(10, point.y - y);
-        }
-        if (isResizing.includes('top')) {
-            height = Math.max(10, height + (y - point.y));
-            y = point.y;
-        }
-        onUpdateItem({ ...room, x, y, width, height });
+
+        onUpdateItem({ ...room, points: newPoints });
     }
   };
   
@@ -165,36 +194,39 @@ export function Canvas({
   const annotations = allItems.filter(i => i.type === 'annotation') as Annotation[];
   const measurements = allItems.filter(i => i.type === 'measurement') as Measurement[];
   const surfaces = allItems.filter(i => i.type === 'surface') as Surface[];
+  
+  const getRoomPath = (room: Room) => {
+    if (!room.points || room.points.length === 0) return "";
+    const path = room.points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    return `${path} Z`;
+  };
+
 
   const renderResizeHandles = (room: Room) => {
     const handleSize = 8;
     const halfHandle = handleSize / 2;
-    const positions = {
-      'top-left': { x: room.x - halfHandle, y: room.y - halfHandle, cursor: 'nwse-resize' },
-      'top-right': { x: room.x + room.width - halfHandle, y: room.y - halfHandle, cursor: 'nesw-resize' },
-      'bottom-left': { x: room.x - halfHandle, y: room.y + room.height - halfHandle, cursor: 'nesw-resize' },
-      'bottom-right': { x: room.x + room.width - halfHandle, y: room.y + room.height - halfHandle, cursor: 'nwse-resize' },
-      'top': { x: room.x + room.width / 2 - halfHandle, y: room.y - halfHandle, cursor: 'ns-resize' },
-      'bottom': { x: room.x + room.width / 2 - halfHandle, y: room.y + room.height - halfHandle, cursor: 'ns-resize' },
-      'left': { x: room.x - halfHandle, y: room.y + room.height / 2 - halfHandle, cursor: 'ew-resize' },
-      'right': { x: room.x + room.width - halfHandle, y: room.y + room.height / 2 - halfHandle, cursor: 'ew-resize' },
-    };
-
-    return Object.entries(positions).map(([key, pos]) => (
+    
+    const corners = [
+        { pointIndex: 0, corner: 'top-left' },
+        { pointIndex: 1, corner: 'top-right' },
+        { pointIndex: 2, corner: 'bottom-right' },
+        { pointIndex: 3, corner: 'bottom-left' },
+    ];
+    
+    return room.points.map((p, index) => (
       <rect
-        key={key}
-        x={pos.x}
-        y={pos.y}
+        key={index}
+        x={p.x - halfHandle}
+        y={p.y - halfHandle}
         width={handleSize}
         height={handleSize}
         fill="hsl(var(--ring))"
         stroke="hsl(var(--background))"
         strokeWidth="1"
-        className="cursor-pointer"
-        style={{ cursor: pos.cursor }}
+        className="cursor-nwse-resize"
         onMouseDown={(e) => {
           e.stopPropagation();
-          setIsResizing(key);
+          setIsResizing({pointIndex: index, corner: corners.find(c=>c.pointIndex === index)?.corner || ''});
         }}
       />
     ));
@@ -214,12 +246,20 @@ export function Canvas({
       className: "font-semibold select-none"
     };
 
+    if (room.points.length !== 4) return null;
+
+    const width = getDistance(room.points[0], room.points[1]);
+    const height = getDistance(room.points[1], room.points[2]);
+    const midPointTop = { x: (room.points[0].x + room.points[1].x) / 2, y: (room.points[0].y + room.points[1].y) / 2 };
+    const midPointRight = { x: (room.points[1].x + room.points[2].x) / 2, y: (room.points[1].y + room.points[2].y) / 2 };
+    const angleRight = Math.atan2(room.points[2].y - room.points[1].y, room.points[2].x - room.points[1].x) * 180 / Math.PI;
+
     return (<>
-      <text x={room.x + room.width / 2} y={room.y - offset} {...textStyle}>
-        {formatDistance(room.width, scale)}
+      <text x={midPointTop.x} y={midPointTop.y - offset} {...textStyle}>
+        {formatDistance(width, scale)}
       </text>
-      <text x={room.x + room.width + offset} y={room.y + room.height / 2} transform={`rotate(90, ${room.x + room.width + offset}, ${room.y + room.height/2})`} {...textStyle}>
-        {formatDistance(room.height, scale)}
+      <text x={midPointRight.x + offset} y={midPointRight.y} transform={`rotate(${angleRight}, ${midPointRight.x + offset}, ${midPointRight.y})`} {...textStyle}>
+        {formatDistance(height, scale)}
       </text>
     </>);
   };
@@ -244,23 +284,20 @@ export function Canvas({
         
         <g>
           {backgroundImage && (
-             <image href={backgroundImage} x={viewBox.x} y={viewBox.y} width={viewBox.width} height={viewBox.height} style={{opacity: 0.5}} />
+             <image href={backgroundImage} x="0" y="0" width={imageDimensions.width} height={imageDimensions.height} style={{opacity: 0.5}} />
           )}
 
           {rooms.map((room) => ( room.visible &&
             <g key={room.id} onMouseDown={(e) => handleMouseDown(e, room)} className={tool === 'select' ? 'cursor-move' : ''}>
-              <rect
-                x={room.x}
-                y={room.y}
-                width={room.width}
-                height={room.height}
+              <path
+                d={getRoomPath(room)}
                 fill="hsl(var(--primary) / 0.3)"
                 stroke="hsl(var(--primary))"
                 strokeWidth={selectedItem?.id === room.id ? 2 : 1}
                 className="transition-all"
                 data-item-id={room.id}
               />
-              <text x={room.x + 10} y={room.y + 20} fill="hsl(var(--foreground))" fontSize="12" pointerEvents="none" className="select-none">
+              <text x={room.points[0].x + 10} y={room.points[0].y + 20} fill="hsl(var(--foreground))" fontSize="12" pointerEvents="none" className="select-none">
                 {room.name}
               </text>
             </g>

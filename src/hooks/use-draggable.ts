@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { BaseItem, Point } from '@/lib/types';
+import type { BaseItem, Point, Room } from '@/lib/types';
 
 interface DraggableOptions {
   svgRef: React.RefObject<SVGSVGElement>;
@@ -11,9 +11,10 @@ interface DraggableOptions {
   viewBox: { x: number, y: number, width: number, height: number };
   setViewBox: React.Dispatch<React.SetStateAction<{ x: number, y: number, width: number, height: number }>>;
   setTool: (tool: string) => void;
+  selectedItem: BaseItem | null;
 }
 
-export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox, setViewBox, setTool }: DraggableOptions) {
+export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox, setViewBox, setTool, selectedItem }: DraggableOptions) {
   const [draggingItem, setDraggingItem] = useState<{ item: BaseItem; offset: Point } | null>(null);
   const [panning, setPanning] = useState(false);
   const [panStart, setPanStart] = useState<Point>({ x: 0, y: 0 });
@@ -70,7 +71,12 @@ export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox
            return;
         }
 
-        let itemPosition: Point = { x: (item as any).x, y: (item as any).y };
+        let itemPosition: Point;
+        if (item.type === 'room') {
+            itemPosition = { x: item.points[0].x, y: item.points[0].y };
+        } else {
+            itemPosition = { x: (item as any).x, y: (item as any).y };
+        }
   
         setDraggingItem({
           item,
@@ -80,14 +86,22 @@ export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox
   };
 
   const handleMouseMove = (e: MouseEvent) => {
-    if (draggingItem && tool === 'select' && 'x' in draggingItem.item) {
-      const point = getSVGPoint(e);
-      const newX = point.x - draggingItem.offset.x;
-      const newY = point.y - draggingItem.offset.y;
-
-      const updatedItem = { ...draggingItem.item, x: newX, y: newY };
-      onUpdateItem(updatedItem);
-      setDraggingItem(prev => prev ? { ...prev, item: updatedItem } : null);
+    const point = getSVGPoint(e);
+    if (draggingItem && tool === 'select' && selectedItem) {
+      if(selectedItem.type === 'room') {
+        const room = selectedItem as Room;
+        const dx = point.x - draggingItem.offset.x - room.points[0].x;
+        const dy = point.y - draggingItem.offset.y - room.points[0].y;
+        const updatedRoom = { ...room, points: room.points.map(p => ({ x: p.x + dx, y: p.y + dy }))};
+        onUpdateItem(updatedRoom);
+        setDraggingItem(prev => prev ? { ...prev, item: updatedRoom } : null);
+      } else if ('x' in selectedItem) {
+        const newX = point.x - draggingItem.offset.x;
+        const newY = point.y - draggingItem.offset.y;
+        const updatedItem = { ...selectedItem, x: newX, y: newY };
+        onUpdateItem(updatedItem);
+        setDraggingItem(prev => prev ? { ...prev, item: updatedItem } : null);
+      }
     } else if (panning && svgRef.current) {
         const clientPoint = getClientPoint(e);
         const scale = viewBox.width / svgRef.current.clientWidth;

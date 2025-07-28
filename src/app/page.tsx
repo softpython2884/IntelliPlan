@@ -34,10 +34,12 @@ export default function Home() {
     const newRoom: Room = {
       id: `room-${Date.now()}`,
       type: 'room',
-      x: 50,
-      y: 50,
-      width: 400,
-      height: 300,
+      points: [
+        { x: 50, y: 50 },
+        { x: 450, y: 50 },
+        { x: 450, y: 350 },
+        { x: 50, y: 350 },
+      ],
       name: 'New Room',
       visible: true,
     };
