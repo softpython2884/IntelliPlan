@@ -12,6 +12,7 @@ import { ScrollArea } from "./ui/scroll-area";
 import { getDistance } from "@/lib/geometry";
 import { LayersPanel } from "./layers-panel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { useState } from "react";
 
 interface PropertiesPanelProps {
   selectedItem: BaseItem | null;
@@ -24,6 +25,8 @@ interface PropertiesPanelProps {
 }
 
 export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, allItems, onSelectItem, allFurniture, rooms }: PropertiesPanelProps) {
+  const [activeTab, setActiveTab] = useState("properties");
+  
   const handlePropertyChange = (prop: string, value: any) => {
     if (!selectedItem) return;
     
@@ -159,7 +162,7 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, allI
   
   return (
     <Card className="w-80 border-0 border-l rounded-none shrink-0">
-      <Tabs defaultValue="properties" className="w-full flex flex-col h-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col h-full">
         <TabsList className="grid w-full grid-cols-2 shrink-0">
           <TabsTrigger value="properties">Properties</TabsTrigger>
           <TabsTrigger value="ai">AI Assistant</TabsTrigger>

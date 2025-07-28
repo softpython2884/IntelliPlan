@@ -155,7 +155,7 @@ export function Canvas({
   };
 
   const handleCanvasClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget || (e.target as SVGElement).tagName === 'rect') {
+    if (e.target === e.currentTarget || (e.target as SVGElement).tagName === 'rect' && !(e.target as SVGElement).hasAttribute('data-item-id')) {
         onSelectItem(null);
     }
   };
@@ -196,11 +196,11 @@ export function Canvas({
         </defs>
         <rect width="100%" height="100%" fill="url(#grid)" x={viewBox.x} y={viewBox.y} transform={`scale(${viewBox.width/800}, ${viewBox.height/600})`}/>
         
-        {backgroundImage && (
-          <image href={backgroundImage} x={viewBox.x} y={viewBox.y} width={viewBox.width} height={viewBox.height} preserveAspectRatio="xMidYMid meet" style={{opacity: 0.5}} />
-        )}
-        
         <g>
+          {backgroundImage && (
+            <image href={backgroundImage} x={0} y={0} width="800" height="600" style={{opacity: 0.5}} />
+          )}
+
           {rooms.map((room) => ( room.visible &&
             <g key={room.id} onMouseDown={(e) => handleMouseDown(e, room)} className={tool === 'select' ? 'cursor-move' : ''}>
               <rect
@@ -212,6 +212,7 @@ export function Canvas({
                 stroke="hsl(var(--primary))"
                 strokeWidth={selectedItem?.id === room.id ? 2 : 1}
                 className="transition-all"
+                data-item-id={room.id}
               />
               <text x={room.x + 10} y={room.y + 20} fill="hsl(var(--foreground))" fontSize="12" pointerEvents="none" className="select-none">
                 {room.name}
@@ -245,6 +246,7 @@ export function Canvas({
                 strokeWidth={selectedItem?.id === item.id ? 2 : 1}
                 rx="4"
                 className="transition-all"
+                data-item-id={item.id}
               />
               <text x={item.width / 2} y={item.height / 2} textAnchor="middle" dy=".3em" fill="hsl(var(--accent-foreground))" fontSize="10" pointerEvents="none" className="select-none">
                 {item.name}
