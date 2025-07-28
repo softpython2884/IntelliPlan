@@ -1,5 +1,5 @@
 "use client";
-import { MousePointer, Ruler, Square, Sofa, MessageSquare, Upload, Bed, Lamp, Tv, Hand, LampCeiling, Power, ToggleLeft, Armchair, Book, Coffee, Desk, CaseLower } from "lucide-react";
+import { MousePointer, Ruler, Square, Sofa, MessageSquare, Upload, Bed, Lamp, Tv, Hand, LampCeiling, Power, ToggleLeft, Armchair, Book, Coffee, LampDesk, CaseLower } from "lucide-react";
 import type { FC } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +25,7 @@ const furnitureItems = [
   { name: 'Nightstand', width: 50, height: 40, icon: CaseLower, category: 'furniture' },
   { name: 'Dining Table', width: 180, height: 90, icon: () => <div className="w-full h-full border-2 rounded-lg border-current" />, category: 'furniture' },
   { name: 'Chair', width: 50, height: 50, icon: () => <div className="w-full h-full border-2 rounded-md border-current" />, category: 'furniture' },
-  { name: 'Desk', width: 140, height: 70, icon: Desk, category: 'furniture' },
+  { name: 'Desk', width: 140, height: 70, icon: LampDesk, category: 'furniture' },
   { name: 'Bookcase', width: 90, height: 30, icon: Book, category: 'furniture' },
   { name: 'Floor Lamp', width: 40, height: 40, icon: Lamp, category: 'furniture' },
 ];
@@ -101,7 +101,7 @@ export function Toolbox({ currentTool, onToolSelect, onAddFurniture, onAddAnnota
 
 interface ItemButtonProps {
     item: { name: string; width: number; height: number; icon: FC<any>, category: 'furniture' | 'electrical' };
-    onAddItem: (item: { name: string; width: number; height: number; icon: FC<any>, category: 'furniture' | 'electrical' }) => void;
+    onAddItem: (item: { name:string; width: number; height: number; icon: FC<any>, category: 'furniture' | 'electrical' }) => void;
 }
 
 function ItemButton({ item, onAddItem }: ItemButtonProps) {
