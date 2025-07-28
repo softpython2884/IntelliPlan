@@ -17,12 +17,12 @@ interface ToolboxProps {
 }
 
 const furnitureItems: Array<{ name: string; width: number; height: number; shape: 'rectangle' | 'circle'; color: string; icon: FC<any>, category: 'furniture' | 'electrical'}> = [
-  { name: 'Rectangle', width: 200, height: 90, shape: 'rectangle', color: 'hsl(var(--primary))', icon: () => <div className="w-full h-full rounded-md bg-primary/80" />, category: 'furniture' },
-  { name: 'Square', width: 80, height: 80, shape: 'rectangle', color: 'hsl(var(--secondary-foreground) / 0.2)', icon: () => <div className="w-full h-full rounded-md bg-secondary-foreground/20" />, category: 'furniture' },
-  { name: 'Small Rectangle', width: 120, height: 60, shape: 'rectangle', color: 'hsl(var(--accent))', icon: () => <div className="w-full h-full rounded-md bg-accent/80" />, category: 'furniture' },
-  { name: 'Slim Rectangle', width: 140, height: 10, shape: 'rectangle', color: 'hsl(var(--destructive))', icon: () => <div className="w-full h-full rounded-md bg-destructive/60" />, category: 'furniture' },
-  { name: 'Circle', width: 60, height: 60, shape: 'circle', color: 'hsl(200, 70%, 70%)', icon: () => <div className="w-full h-full rounded-full bg-blue-300/80" />, category: 'furniture' },
-  { name: 'Small Square', width: 50, height: 50, shape: 'rectangle', color: 'hsl(140, 60%, 70%)', icon: () => <div className="w-full h-full rounded-md bg-green-300/80" />, category: 'furniture' },
+  { name: 'Rectangle', width: 200, height: 90, shape: 'rectangle', color: 'hsl(var(--primary))', icon: () => <div className="w-full h-full rounded-md bg-primary" />, category: 'furniture' },
+  { name: 'Square', width: 80, height: 80, shape: 'rectangle', color: 'hsl(var(--secondary))', icon: () => <div className="w-full h-full rounded-md bg-secondary" />, category: 'furniture' },
+  { name: 'Small Rectangle', width: 120, height: 60, shape: 'rectangle', color: 'hsl(var(--accent))', icon: () => <div className="w-full h-full rounded-md bg-accent" />, category: 'furniture' },
+  { name: 'Slim Rectangle', width: 140, height: 10, shape: 'rectangle', color: 'hsl(var(--destructive))', icon: () => <div className="w-full h-full rounded-md bg-destructive" />, category: 'furniture' },
+  { name: 'Circle', width: 60, height: 60, shape: 'circle', color: 'hsl(200, 70%, 70%)', icon: () => <div className="w-full h-full rounded-full bg-blue-300" />, category: 'furniture' },
+  { name: 'Small Square', width: 50, height: 50, shape: 'rectangle', color: 'hsl(140, 60%, 70%)', icon: () => <div className="w-full h-full rounded-md bg-green-300" />, category: 'furniture' },
 ];
 
 const electricalItems: Array<{ name: string; width: number; height: number; shape: 'rectangle' | 'circle'; color: string; icon: FC<any>, category: 'furniture' | 'electrical'}> = [
@@ -107,11 +107,11 @@ function ItemButton({ item, onAddItem }: ItemButtonProps) {
                 onClick={() => onAddItem(item)}
                 className={cn(
                     "flex flex-col items-center justify-center p-2 border rounded-lg aspect-square hover:bg-accent hover:text-accent-foreground transition-colors",
-                     item.category === 'electrical' ? 'bg-blue-100/20' : 'bg-secondary/30'
+                     "bg-background"
                 )}
                 >
-                <div className="w-8 h-8 mb-1 flex items-center justify-center">
-                  <item.icon />
+                <div className="w-8 h-8 mb-1 flex items-center justify-center text-foreground/80">
+                  <item.icon className="w-full h-full"/>
                 </div>
                 <span className="text-xs text-center">{item.name}</span>
                 </button>
