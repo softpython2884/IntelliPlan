@@ -1,5 +1,5 @@
 "use client";
-import { MousePointer, Ruler, Square, Upload, Hand, LampCeiling, Power, ToggleLeft, MessageSquare } from "lucide-react";
+import { MousePointer, Ruler, Square, Upload, Hand, MessageSquare } from "lucide-react";
 import type { FC } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,18 +17,18 @@ interface ToolboxProps {
 }
 
 const furnitureItems: Array<{ name: string; width: number; height: number; shape: 'rectangle' | 'circle'; color: string; icon: FC<any>, category: 'furniture' | 'electrical'}> = [
-  { name: 'Rectangle', width: 200, height: 90, shape: 'rectangle', color: 'hsl(var(--primary))', icon: () => <div className="w-full h-full rounded-md bg-primary" />, category: 'furniture' },
-  { name: 'Square', width: 80, height: 80, shape: 'rectangle', color: 'hsl(var(--secondary))', icon: () => <div className="w-full h-full rounded-md bg-secondary" />, category: 'furniture' },
-  { name: 'Small Rectangle', width: 120, height: 60, shape: 'rectangle', color: 'hsl(var(--accent))', icon: () => <div className="w-full h-full rounded-md bg-accent" />, category: 'furniture' },
-  { name: 'Slim Rectangle', width: 140, height: 10, shape: 'rectangle', color: 'hsl(var(--destructive))', icon: () => <div className="w-full h-full rounded-md bg-destructive" />, category: 'furniture' },
-  { name: 'Circle', width: 60, height: 60, shape: 'circle', color: 'hsl(200, 70%, 70%)', icon: () => <div className="w-full h-full rounded-full bg-blue-300" />, category: 'furniture' },
-  { name: 'Small Square', width: 50, height: 50, shape: 'rectangle', color: 'hsl(140, 60%, 70%)', icon: () => <div className="w-full h-full rounded-md bg-green-300" />, category: 'furniture' },
+  { name: 'Rectangle', width: 200, height: 90, shape: 'rectangle', color: 'hsl(var(--primary))', icon: () => <div className="w-full h-full rounded-md" style={{backgroundColor: 'hsl(var(--primary))'}} />, category: 'furniture' },
+  { name: 'Square', width: 80, height: 80, shape: 'rectangle', color: 'hsl(var(--secondary))', icon: () => <div className="w-full h-full rounded-md" style={{backgroundColor: 'hsl(var(--secondary))'}} />, category: 'furniture' },
+  { name: 'Small Rectangle', width: 120, height: 60, shape: 'rectangle', color: 'hsl(var(--accent))', icon: () => <div className="w-full h-full rounded-md" style={{backgroundColor: 'hsl(var(--accent))'}} />, category: 'furniture' },
+  { name: 'Slim Rectangle', width: 140, height: 10, shape: 'rectangle', color: 'hsl(var(--destructive))', icon: () => <div className="w-full h-full rounded-md" style={{backgroundColor: 'hsl(var(--destructive))'}} />, category: 'furniture' },
+  { name: 'Circle', width: 60, height: 60, shape: 'circle', color: 'hsl(200, 70%, 70%)', icon: () => <div className="w-full h-full rounded-full" style={{backgroundColor: 'hsl(200, 70%, 70%)'}} />, category: 'furniture' },
+  { name: 'Small Square', width: 50, height: 50, shape: 'rectangle', color: 'hsl(140, 60%, 70%)', icon: () => <div className="w-full h-full rounded-md" style={{backgroundColor: 'hsl(140, 60%, 70%)'}} />, category: 'furniture' },
 ];
 
 const electricalItems: Array<{ name: string; width: number; height: number; shape: 'rectangle' | 'circle'; color: string; icon: FC<any>, category: 'furniture' | 'electrical'}> = [
-    { name: 'Switch', width: 10, height: 10, shape: 'rectangle', color: 'hsl(var(--foreground))', icon: ToggleLeft, category: 'electrical' },
-    { name: 'Outlet', width: 10, height: 10, shape: 'rectangle', color: 'hsl(var(--foreground))', icon: Power, category: 'electrical' },
-    { name: 'Ceiling Light', width: 30, height: 30, shape: 'circle', color: 'hsl(var(--foreground))', icon: LampCeiling, category: 'electrical' },
+    { name: 'Switch', width: 10, height: 10, shape: 'rectangle', color: 'hsl(var(--foreground))', icon: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-full h-full"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M12 15V9"/></svg>, category: 'electrical' },
+    { name: 'Outlet', width: 10, height: 10, shape: 'rectangle', color: 'hsl(var(--foreground))', icon: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-full h-full"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 12h.01"/><path d="M15 12h.01"/></svg>, category: 'electrical' },
+    { name: 'Ceiling Light', width: 30, height: 30, shape: 'circle', color: 'hsl(var(--foreground))', icon: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-full h-full"><circle cx="12" cy="12" r="8"/><path d="m12 4 1.5 4-1.5 4-1.5-4 1.5-4Z"/><path d="M12 12s2.5 2 5 2"/><path d="M12 12s-2.5 2-5 2"/><path d="M12 12s2.5-2 5-2"/><path d="M12 12s-2.5-2-5-2"/></svg>, category: 'electrical' },
 ]
 
 export function Toolbox({ currentTool, onToolSelect, onAddFurniture, onAddAnnotation, onImageUpload }: ToolboxProps) {
@@ -150,5 +150,3 @@ function ToolButton({ name, icon: Icon, currentTool, onSelect }: ToolButtonProps
     </Tooltip>
   );
 }
-
-    
