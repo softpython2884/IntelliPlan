@@ -20,16 +20,18 @@ interface ProjectData {
 const migrateProjectData = (data: any): ProjectData => {
   // Ensure data is an object and has default top-level properties
   if (typeof data !== 'object' || data === null) data = {};
-  if (!data.items) data.items = [];
+  if (!Array.isArray(data.items)) data.items = [];
   if (!data.scale) data.scale = { pixels: 100, meters: 1 };
   if (!data.backgroundImage) data.backgroundImage = null;
 
   const migratedItems = data.items.map((item: any) => {
+    // Basic defaults for any item
     const defaults = {
       visible: true,
     };
     const migratedItem = { ...defaults, ...item };
 
+    // Type-specific migrations
     if (migratedItem.type === 'furniture') {
       const furnitureDefaults = {
         category: 'furniture',
@@ -45,12 +47,14 @@ const migrateProjectData = (data: any): ProjectData => {
         rotation: 0,
       };
       let room = { ...roomDefaults, ...migratedItem };
-      if (!room.width || !room.height) {
+      // If width/height are missing, calculate from points
+      if (room.points && (!room.width || !room.height)) {
         const bounds = getPolygonBounds(room.points);
         room.width = bounds.width;
         room.height = bounds.height;
       }
-      if (!room.x || !room.y) {
+       // If x/y are missing, calculate from points
+      if (room.points && (!room.x || !room.y)) {
         const centroid = getPolygonCentroid(room.points);
         room.x = centroid.x;
         room.y = centroid.y;
@@ -58,6 +62,7 @@ const migrateProjectData = (data: any): ProjectData => {
       return room;
     }
     
+    // Return other item types as they are, with defaults applied
     return migratedItem;
   });
 
@@ -116,17 +121,17 @@ export default function Home() {
         let data: ProjectData = JSON.parse(text);
         
         // Migrate data first to ensure compatibility
-        data = migrateProjectData(data);
+        const migratedData = migrateProjectData(data);
 
         // Basic validation after migration
-        if (!data.items || !data.scale) {
+        if (!migratedData.items || !migratedData.scale) {
            throw new Error("Invalid project file format.");
         }
         
         handleClear(); // Clear existing project
-        setItems(data.items || []);
-        setScale(data.scale);
-        setBackgroundImage(data.backgroundImage || null);
+        setItems(migratedData.items || []);
+        setScale(migratedData.scale);
+        setBackgroundImage(migratedData.backgroundImage || null);
         toast({ title: "Success", description: "Project imported successfully." });
       } catch (error: any) {
         console.error("Failed to import project:", error);
