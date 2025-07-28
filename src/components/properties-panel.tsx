@@ -207,3 +207,5 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
     </Card>
   );
 }
+
+    

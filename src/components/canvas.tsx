@@ -178,7 +178,7 @@ export function Canvas({
     if (tool === 'measure' && isMeasuring && currentMeasurement) {
       const updatedMeasurement = { ...currentMeasurement, end: point };
       setCurrentMeasurement(updatedMeasurement);
-      setItems(prevItems => prevItems.map(item => item.id === currentMeasurement.id ? updatedMeasurement : item));
+      setItems(items.map(item => item.id === currentMeasurement.id ? updatedMeasurement : item));
     } else if (isResizing) {
         const room = isResizing.item;
         const newPoints = [...room.points];
@@ -441,7 +441,7 @@ export function Canvas({
                   <text 
                       y={-8 * zoomFactor}
                       textAnchor="middle"
-                      fill={line.isReference ? "hsl(var(--ring))" : "hsl(var(--destructive))"}
+                      fill={line.isReference ? "hsl(var(--ring))" : "hsl(var(--destructive-foreground))"}
                       stroke={"hsl(var(--background))"}
                       strokeWidth={3 * zoomFactor}
                       paintOrder="stroke"
@@ -450,7 +450,7 @@ export function Canvas({
                       strokeLinejoin="miter"
                       className="font-semibold select-none"
                   >
-                      {formatDistance(distance, scale, line.isReference ? line.realLength : undefined)}
+                      {formatDistance(distance, scale, line.realLength)}
                   </text>
               </g>
             </g>
@@ -472,3 +472,5 @@ export function Canvas({
     </div>
   );
 }
+
+    
