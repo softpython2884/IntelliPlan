@@ -36,7 +36,6 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
     if (selectedItem.type === 'measurement' && prop === 'realLength') {
       const pixelLength = getDistance(selectedItem.start, selectedItem.end);
       if (value > 0) {
-        // Convert cm to meters for the scale
         onScaleChange({ pixels: pixelLength, meters: value / 100 });
         const updatedItem = { ...selectedItem, [prop]: value, isReference: true };
         onUpdateItem(updatedItem);
@@ -126,7 +125,19 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
                 value={[selectedItem.rotation]}
                 onValueChange={(value) => handlePropertyChange('rotation', value[0])}
               />
-              <span className="text-sm w-12 text-right">{selectedItem.rotation}°</span>
+              <Input
+                type="number"
+                className="w-20"
+                value={selectedItem.rotation}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  if(!isNaN(value) && value >= 0 && value <= 360) {
+                    handlePropertyChange('rotation', value);
+                  }
+                }}
+                min={0}
+                max={360}
+              />
             </div>
           </div>
         )}
@@ -142,7 +153,7 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
           <>
             <div>
               <Label>Length</Label>
-              <p className="text-sm font-bold">{formatDistance(getDistance(selectedItem.start, selectedItem.end), scale, selectedItem.realLength ? selectedItem.realLength / 100 : undefined)}</p>
+              <p className="text-sm font-bold">{formatDistance(getDistance(selectedItem.start, selectedItem.end), scale, selectedItem.realLength)}</p>
               <div className="mt-4">
                 <Label htmlFor="realLength">Set as Reference Scale: Real Length (cm)</Label>
                 <Input id="realLength" type="number" placeholder="e.g. 90" step="0.1" value={selectedItem.realLength || ''} onChange={(e) => handlePropertyChange('realLength', parseFloat(e.target.value))} />

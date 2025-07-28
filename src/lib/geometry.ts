@@ -4,10 +4,17 @@ export function getDistance(p1: Point, p2: Point): number {
   return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
 }
 
-export function formatDistance(pixelDistance: number, scale: { pixels: number, meters: number }, overrideMeters?: number): string {
-    const meters = overrideMeters !== undefined ? overrideMeters : (pixelDistance / scale.pixels) * scale.meters;
+export function formatDistance(pixelDistance: number, scale: { pixels: number, meters: number }, realLengthCm?: number): string {
+    if (realLengthCm !== undefined) {
+      if (realLengthCm < 100) {
+        return `${realLengthCm.toFixed(1)} cm`;
+      }
+      return `${(realLengthCm / 100).toFixed(2)} m`;
+    }
 
     if (!scale || scale.pixels === 0 || !scale.meters) return `${pixelDistance.toFixed(0)}px`;
+    
+    const meters = (pixelDistance / scale.pixels) * scale.meters;
 
     if (meters < 1) {
       return `${(meters * 100).toFixed(1)} cm`;
@@ -28,7 +35,7 @@ export function getPolygonCentroid(points: Point[]): Point {
     let a = 0;
 
     // For a simple average if the polygon is not closed
-    if (points[0].x !== points[points.length -1].x || points[0].y !== points[points.length-1].y) {
+    if (points.length > 0 && (points[0].x !== points[points.length -1]?.x || points[0].y !== points[points.length-1]?.y)) {
        for (const p of points) {
         centroid.x += p.x;
         centroid.y += p.y;
