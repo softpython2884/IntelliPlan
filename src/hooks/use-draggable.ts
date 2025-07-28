@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { BaseItem, Point, Room } from '@/lib/types';
 
 interface DraggableOptions {
@@ -56,6 +56,14 @@ export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox
   };
 
   const handleMouseDown = (e: React.MouseEvent, item?: BaseItem) => {
+    // Middle mouse button (button === 1) always initiates panning
+    if (e.button === 1) {
+        e.preventDefault(); // Prevent default middle-click behavior (like autoscroll)
+        setPanning(true);
+        setPanStart(getClientPoint(e));
+        return;
+    }
+
     e.stopPropagation();
     if (tool === 'pan') {
       setPanning(true);
@@ -85,9 +93,9 @@ export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox
     }
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    const point = getSVGPoint(e);
+  const handleMouseMove = useCallback((e: MouseEvent) => {
     if (draggingItem && tool === 'select' && selectedItem) {
+      const point = getSVGPoint(e);
       if(selectedItem.type === 'room') {
         const room = selectedItem as Room;
         const dx = point.x - draggingItem.offset.x - room.points[0].x;
@@ -112,25 +120,26 @@ export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox
         setViewBox(prev => ({ ...prev, x: prev.x - dx, y: prev.y - dy }));
         setPanStart(clientPoint);
     }
-  };
+  }, [draggingItem, panning, panStart, selectedItem, onUpdateItem, setViewBox, tool, viewBox.width]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback((e: MouseEvent) => {
+    // Stop panning on middle mouse button release
+    if (e.button === 1) {
+        setPanning(false);
+    }
     setDraggingItem(null);
     setPanning(false);
-  };
+  }, []);
   
   useEffect(() => {
-    const onMove = (e: MouseEvent) => handleMouseMove(e);
-    const onUp = () => handleMouseUp();
-    
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
     
     return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
     }
-  }, [draggingItem, panning, panStart, viewBox.width, onUpdateItem, setViewBox]);
+  }, [handleMouseMove, handleMouseUp]);
 
 
   return { handleMouseDown };

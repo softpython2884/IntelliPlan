@@ -1,15 +1,13 @@
-import { FileDown, Trash2, Zap } from "lucide-react";
+import { FileDown, FileUp, Trash2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface HeaderProps {
   onClear: () => void;
+  onExport: () => void;
+  onImport: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-export function Header({ onClear }: HeaderProps) {
-  const handleExport = () => {
-    // This would trigger a library like html2canvas or similar
-    alert("Export functionality not implemented yet.");
-  };
+export function Header({ onClear, onExport, onImport }: HeaderProps) {
 
   return (
     <header className="flex items-center justify-between p-2 border-b bg-card shrink-0">
@@ -24,7 +22,14 @@ export function Header({ onClear }: HeaderProps) {
           <Trash2 className="w-4 h-4 mr-2" />
           Clear
         </Button>
-        <Button variant="default" size="sm" onClick={handleExport}>
+        <Button asChild variant="outline" size="sm">
+            <label className="cursor-pointer">
+              <FileUp className="w-4 h-4 mr-2" />
+              Import
+              <input type="file" className="hidden" accept=".json" onChange={onImport} />
+            </label>
+        </Button>
+        <Button variant="default" size="sm" onClick={onExport}>
           <FileDown className="w-4 h-4 mr-2" />
           Export
         </Button>

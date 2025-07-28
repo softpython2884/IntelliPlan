@@ -8,6 +8,17 @@ import { Canvas } from "@/components/canvas";
 import { PropertiesPanel } from "@/components/properties-panel";
 import type { Furniture, Room, Annotation, Measurement, BaseItem, Surface } from "@/lib/types";
 import { ScalePanel } from "@/components/scale-panel";
+import { useToast } from "@/hooks/use-toast";
+
+interface ProjectData {
+  rooms: Room[];
+  furniture: Furniture[];
+  annotations: Annotation[];
+  measurements: Measurement[];
+  surfaces: Surface[];
+  scale: { pixels: number; meters: number };
+  backgroundImage: string | null;
+}
 
 export default function Home() {
   const [tool, setTool] = useState("select");
@@ -19,6 +30,7 @@ export default function Home() {
   const [scale, setScale] = useState({ pixels: 100, meters: 1 }); // Default scale
   const [selectedItem, setSelectedItem] = useState<BaseItem | null>(null);
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const handleClear = () => {
     setRooms([]);
@@ -30,6 +42,68 @@ export default function Home() {
     setBackgroundImage(null);
     setScale({ pixels: 100, meters: 1 });
   };
+
+  const handleExport = () => {
+    const projectData: ProjectData = {
+      rooms,
+      furniture,
+      annotations,
+      measurements,
+      surfaces,
+      scale,
+      backgroundImage
+    };
+    const jsonString = JSON.stringify(projectData, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "intellipan-project.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({ title: "Success", description: "Project exported successfully." });
+  };
+
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result;
+        if (typeof text !== 'string') {
+          throw new Error("File is not valid text.");
+        }
+        const data: ProjectData = JSON.parse(text);
+        
+        // Basic validation
+        if (!data.rooms || !data.furniture || !data.scale) {
+           throw new Error("Invalid project file format.");
+        }
+
+        handleClear(); // Clear existing project
+        setRooms(data.rooms);
+        setFurniture(data.furniture);
+        setAnnotations(data.annotations || []);
+        setMeasurements(data.measurements || []);
+        setSurfaces(data.surfaces || []);
+        setScale(data.scale);
+        setBackgroundImage(data.backgroundImage || null);
+        toast({ title: "Success", description: "Project imported successfully." });
+      } catch (error: any) {
+        console.error("Failed to import project:", error);
+        toast({ title: "Error", description: `Failed to import project: ${error.message}`, variant: "destructive" });
+      } finally {
+        // Reset file input to allow importing the same file again
+        event.target.value = "";
+      }
+    };
+    reader.readAsText(file);
+  };
+
 
   const addRoom = (newRoom: Room) => {
     setRooms([...rooms, newRoom]);
@@ -108,7 +182,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground font-body">
-      <Header onClear={handleClear} />
+      <Header onClear={handleClear} onExport={handleExport} onImport={handleImport} />
       <div className="flex flex-1 overflow-hidden">
         <Toolbox
           currentTool={tool}
