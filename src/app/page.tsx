@@ -9,12 +9,55 @@ import { PropertiesPanel } from "@/components/properties-panel";
 import type { Furniture, Room, Annotation, Measurement, BaseItem, Surface, Point } from "@/lib/types";
 import { ScalePanel } from "@/components/scale-panel";
 import { useToast } from "@/hooks/use-toast";
+import { getPolygonBounds, getPolygonCentroid } from "@/lib/geometry";
 
 interface ProjectData {
   items: BaseItem[];
   scale: { pixels: number; meters: number };
   backgroundImage: string | null;
 }
+
+const migrateProjectData = (data: any): ProjectData => {
+  const migratedItems = data.items.map((item: any) => {
+    const defaults = {
+      visible: true,
+    };
+    const migratedItem = { ...defaults, ...item };
+
+    if (migratedItem.type === 'furniture') {
+      const furnitureDefaults = {
+        category: 'furniture',
+        shape: 'rectangle',
+        color: 'hsl(var(--accent))',
+        rotation: 0,
+      };
+      return { ...furnitureDefaults, ...migratedItem };
+    }
+    
+    if (migratedItem.type === 'room') {
+      const roomDefaults = {
+        rotation: 0,
+      };
+      let room = { ...roomDefaults, ...migratedItem };
+      if (!room.width || !room.height) {
+        const bounds = getPolygonBounds(room.points);
+        room.width = bounds.width;
+        room.height = bounds.height;
+      }
+      if (!room.x || !room.y) {
+        const centroid = getPolygonCentroid(room.points);
+        room.x = centroid.x;
+        room.y = centroid.y;
+      }
+      return room;
+    }
+    
+    return migratedItem;
+  });
+
+  return { ...data, items: migratedItems };
+};
+
 
 export default function Home() {
   const [tool, setTool] = useState("select");
@@ -64,12 +107,14 @@ export default function Home() {
         if (typeof text !== 'string') {
           throw new Error("File is not valid text.");
         }
-        const data: ProjectData = JSON.parse(text);
+        let data: ProjectData = JSON.parse(text);
         
         // Basic validation
         if (!data.items || !data.scale) {
            throw new Error("Invalid project file format.");
         }
+        
+        data = migrateProjectData(data);
 
         handleClear(); // Clear existing project
         setItems(data.items || []);
@@ -264,42 +309,4 @@ export default function Home() {
       </div>
     </div>
   );
-}
-
-// This helper function needs to be available in this scope for the paste action.
-// You can move it to a geometry utility file if you have one.
-function getPolygonCentroid(points: Point[]): Point {
-    let centroid: Point = { x: 0, y: 0 };
-    if (!points || points.length === 0) return centroid;
-    
-    let signedArea = 0;
-    let x0 = 0, y0 = 0, x1 = 0, y1 = 0, a = 0;
-
-    for (let i = 0; i < points.length; i++) {
-        x0 = points[i].x;
-        y0 = points[i].y;
-        x1 = points[(i + 1) % points.length].x;
-        y1 = points[(i + 1) % points.length].y;
-        a = x0 * y1 - x1 * y0;
-        signedArea += a;
-        centroid.x += (x0 + x1) * a;
-        centroid.y += (y0 + y1) * a;
-    }
-
-    if (signedArea === 0) {
-        // Fallback for collinear points or single point
-        for (const p of points) {
-            centroid.x += p.x;
-            centroid.y += p.y;
-        }
-        centroid.x /= points.length;
-        centroid.y /= points.length;
-        return centroid;
-    }
-
-    signedArea *= 0.5;
-    centroid.x /= (6.0 * signedArea);
-    centroid.y /= (6.0 * signedArea);
-
-    return centroid;
 }
