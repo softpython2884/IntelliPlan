@@ -1,12 +1,13 @@
 "use client";
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useImperativeHandle } from 'react';
 import type { Room, Furniture, Annotation, Point, Measurement, BaseItem, Surface } from '@/lib/types';
 import { useDraggable } from '@/hooks/use-draggable';
 import { cn } from '@/lib/utils';
 import { getDistance, formatDistance, getPolygonCentroid, getPolygonBounds } from '@/lib/geometry';
 
 interface CanvasProps {
+  canvasApiRef: React.Ref<{ getCenter: () => Point }>;
   tool: string;
   items: BaseItem[];
   setScale: (scale: { pixels: number, meters: number }) => void;
@@ -28,6 +29,7 @@ const surfaceColors: Record<Surface['surfaceType'], string> = {
 };
 
 export function Canvas({
+  canvasApiRef,
   tool,
   items,
   scale,
@@ -51,6 +53,14 @@ export function Canvas({
   const [currentRoomPoints, setCurrentRoomPoints] = useState<Point[]>([]);
 
   const zoomFactor = svgRef.current ? viewBox.width / svgRef.current.clientWidth : 1;
+
+  useImperativeHandle(canvasApiRef, () => ({
+    getCenter: () => ({
+      x: viewBox.x + viewBox.width / 2,
+      y: viewBox.y + viewBox.height / 2,
+    }),
+  }));
+
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver(entries => {

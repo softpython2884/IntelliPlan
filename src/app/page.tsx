@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { FC } from "react";
 import { Header } from "@/components/header";
 import { Toolbox } from "@/components/toolbox";
 import { Canvas } from "@/components/canvas";
 import { PropertiesPanel } from "@/components/properties-panel";
-import type { Furniture, Room, Annotation, Measurement, BaseItem, Surface } from "@/lib/types";
+import type { Furniture, Room, Annotation, Measurement, BaseItem, Surface, Point } from "@/lib/types";
 import { ScalePanel } from "@/components/scale-panel";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,6 +31,8 @@ export default function Home() {
   const [selectedItem, setSelectedItem] = useState<BaseItem | null>(null);
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const { toast } = useToast();
+  const canvasApiRef = useRef<{ getCenter: () => Point }>(null);
+
 
   const handleClear = () => {
     setRooms([]);
@@ -112,11 +114,12 @@ export default function Home() {
   };
 
   const addFurniture = (item: { name: string; width: number; height: number; icon: FC<any> }) => {
+    const center = canvasApiRef.current?.getCenter() || { x: 100, y: 100 };
     const newFurniture: Furniture = {
       id: `furniture-${Date.now()}`,
       type: 'furniture',
-      x: 100,
-      y: 100,
+      x: center.x,
+      y: center.y,
       width: item.width, // in cm
       height: item.height, // in cm
       name: item.name,
@@ -207,6 +210,7 @@ export default function Home() {
         <main className="flex-1 relative">
            {(tool === 'measure' || tool === 'draw-room') && <ScalePanel tool={tool}/>}
           <Canvas
+            canvasApiRef={canvasApiRef}
             tool={tool}
             items={allItems}
             scale={scale}
