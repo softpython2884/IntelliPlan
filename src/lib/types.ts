@@ -13,6 +13,10 @@ export interface Room extends BaseItem {
   type: 'room';
   points: Point[];
   name: string;
+  // Add x, y, rotation for group transformations if needed
+  x: number;
+  y: number;
+  rotation: number;
 }
 
 export interface Furniture extends BaseItem {

@@ -50,6 +50,8 @@ export function Canvas({
   const [currentRoomPoints, setCurrentRoomPoints] = useState<Point[]>([]);
   const [previewPoint, setPreviewPoint] = useState<Point | null>(null);
 
+  const zoomFactor = svgRef.current ? viewBox.width / svgRef.current.clientWidth : 1;
+
   useEffect(() => {
     const resizeObserver = new ResizeObserver(entries => {
       for (let entry of entries) {
@@ -68,6 +70,29 @@ export function Canvas({
       const img = new Image();
       img.onload = () => {
         setImageDimensions({ width: img.width, height: img.height });
+        // Center and fit image
+        const svgWidth = svgRef.current?.clientWidth || 800;
+        const svgHeight = svgRef.current?.clientHeight || 600;
+        const imgAspectRatio = img.width / img.height;
+        const svgAspectRatio = svgWidth / svgHeight;
+
+        let newWidth, newHeight, newX, newY;
+
+        if (imgAspectRatio > svgAspectRatio) {
+            newWidth = svgWidth;
+            newHeight = newWidth / imgAspectRatio;
+            newX = 0;
+            newY = (svgHeight - newHeight) / 2;
+        } else {
+            newHeight = svgHeight;
+            newWidth = newHeight * imgAspectRatio;
+            newY = 0;
+            newX = (svgWidth - newWidth) / 2;
+        }
+        
+        setViewBox({ x: 0, y: 0, width: svgWidth, height: svgHeight });
+        setImageDimensions({width: newWidth, height: newHeight});
+
       };
       img.src = backgroundImage;
     }
@@ -138,7 +163,7 @@ export function Canvas({
       setIsResizing({item: item as Room, pointIndex});
     } else if (tool === 'draw-room' && isDrawingRoom) {
       // Check if clicking on the first point to close the shape
-      if (currentRoomPoints.length > 2 && getDistance(point, currentRoomPoints[0]) < 10) {
+      if (currentRoomPoints.length > 2 && getDistance(point, currentRoomPoints[0]) < 10 * zoomFactor) {
         finalizeRoom();
       } else {
         setCurrentRoomPoints([...currentRoomPoints, point]);
@@ -185,12 +210,16 @@ export function Canvas({
       cancelDrawing();
       return;
     }
+    const centroid = getPolygonCentroid(currentRoomPoints);
     const newRoom: Room = {
       id: `room-${Date.now()}`,
       type: 'room',
       points: currentRoomPoints,
       name: 'New Room',
       visible: true,
+      x: centroid.x,
+      y: centroid.y,
+      rotation: 0
     };
     onAddRoom(newRoom);
     cancelDrawing();
@@ -247,7 +276,7 @@ export function Canvas({
   };
 
   const renderResizeHandles = (room: Room) => {
-    const handleSize = 8 / (viewBox.width / 800) ;
+    const handleSize = 8 * zoomFactor;
     const halfHandle = handleSize / 2;
     
     return room.points.map((p, index) => (
@@ -259,7 +288,7 @@ export function Canvas({
         height={handleSize}
         fill="hsl(var(--ring))"
         stroke="hsl(var(--background))"
-        strokeWidth={1 / (viewBox.width / 800)}
+        strokeWidth={1 * zoomFactor}
         className="cursor-move"
         onMouseDown={(e) => handleMouseDown(e, room, index)}
       />
@@ -267,14 +296,14 @@ export function Canvas({
   };
   
   const renderRoomDimensions = (room: Room) => {
-    const offset = 15;
+    const offset = 15 * zoomFactor;
     const textStyle = {
-      fontSize: "12px",
+      fontSize: `${12 * zoomFactor}px`,
       fill: "hsl(var(--foreground))",
       textAnchor: "middle" as const,
       paintOrder: "stroke" as const,
       stroke: "hsl(var(--background))",
-      strokeWidth:"3px",
+      strokeWidth:`${3 * zoomFactor}px`,
       strokeLinecap: "butt" as const,
       strokeLinejoin: "miter" as const,
       className: "font-semibold select-none"
@@ -320,7 +349,7 @@ export function Canvas({
         <rect width="100%" height="100%" fill="url(#grid)" x={viewBox.x} y={viewBox.y} />
         
         {backgroundImage && (
-            <image href={backgroundImage} x="0" y="0" width={imageDimensions.width} height={imageDimensions.height} style={{opacity: 0.5}} />
+            <image href={backgroundImage} x={viewBox.x} y={viewBox.y} width={viewBox.width} height={viewBox.height} preserveAspectRatio="xMidYMid meet" style={{opacity: 0.5}} />
         )}
         
         <g>
@@ -328,13 +357,13 @@ export function Canvas({
             <g key={room.id} onMouseDown={(e) => handleMouseDown(e, room)} className={tool === 'select' ? 'cursor-move' : ''}>
               <path
                 d={getRoomPath(room)}
-                fill="hsl(var(--primary) / 0.3)"
+                fill={selectedItem?.id === room.id ? "hsl(var(--primary) / 0.1)" : "hsl(var(--primary) / 0.3)"}
                 stroke="hsl(var(--primary))"
-                strokeWidth={selectedItem?.id === room.id ? 2 : 1}
+                strokeWidth={selectedItem?.id === room.id ? 2 * zoomFactor : 1 * zoomFactor}
                 className="transition-all"
                 data-item-id={room.id}
               />
-              <text x={getPolygonCentroid(room.points).x} y={getPolygonCentroid(room.points).y} textAnchor='middle' dy=".3em" fill="hsl(var(--foreground))" fontSize="12" pointerEvents="none" className="select-none">
+              <text x={getPolygonCentroid(room.points).x} y={getPolygonCentroid(room.points).y} textAnchor='middle' dy=".3em" fill="hsl(var(--foreground))" fontSize={12 * zoomFactor} pointerEvents="none" className="select-none">
                 {room.name}
               </text>
             </g>
@@ -348,7 +377,7 @@ export function Canvas({
               x2={surface.end.x}
               y2={surface.end.y}
               stroke={surfaceColors[surface.surfaceType]}
-              strokeWidth={surface.thickness}
+              strokeWidth={surface.thickness * zoomFactor}
               strokeLinecap="round"
               className={tool === 'select' ? 'cursor-pointer' : ''}
               onMouseDown={(e) => handleMouseDown(e, surface)}
@@ -362,14 +391,14 @@ export function Canvas({
                 y={0}
                 width={item.width}
                 height={item.height}
-                fill="hsl(var(--accent) / 0.6)"
+                fill={selectedItem?.id === item.id ? "hsl(var(--accent) / 0.3)" : "hsl(var(--accent) / 0.6)"}
                 stroke="hsl(var(--accent-foreground))"
-                strokeWidth={selectedItem?.id === item.id ? 2 : 1}
+                strokeWidth={selectedItem?.id === item.id ? 2 * zoomFactor : 1 * zoomFactor}
                 rx="4"
                 className="transition-all"
                 data-item-id={item.id}
               />
-              <text x={item.width / 2} y={item.height / 2} textAnchor="middle" dy=".3em" fill="hsl(var(--accent-foreground))" fontSize="10" pointerEvents="none" className="select-none">
+              <text x={item.width / 2} y={item.height / 2} textAnchor="middle" dy=".3em" fill="hsl(var(--accent-foreground))" fontSize={10 * zoomFactor} pointerEvents="none" className="select-none">
                 {item.name}
               </text>
             </g>
@@ -377,8 +406,8 @@ export function Canvas({
 
           {annotations.map((note) => ( note.visible &&
             <g key={note.id} onMouseDown={(e) => handleMouseDown(e, note)} className={tool === 'select' ? 'cursor-move' : ''}>
-              <foreignObject x={note.x} y={note.y} width="120" height="80">
-                  <div className="p-2 text-xs bg-card border rounded-md shadow-md h-full w-full overflow-hidden text-ellipsis select-none">
+              <foreignObject x={note.x} y={note.y} width="120" height="80" style={{ transform: `scale(${zoomFactor})`, transformOrigin: 'top left' }}>
+                  <div className={cn("p-2 text-xs bg-card border rounded-md shadow-md h-full w-full overflow-hidden text-ellipsis select-none", { "bg-card/50": selectedItem?.id === note.id })}>
                     {note.text}
                   </div>
               </foreignObject>
@@ -391,7 +420,7 @@ export function Canvas({
             const midX = (line.start.x + line.end.x) / 2;
             const midY = (line.start.y + line.end.y) / 2;
             const angle = Math.atan2(line.end.y - line.start.y, line.end.x - line.start.x) * 180 / Math.PI;
-            const circleRadius = 3 / (viewBox.width / 800);
+            const circleRadius = 4 * zoomFactor;
 
             return (
             <g key={line.id} onMouseDown={(e) => handleMouseDown(e, line)}>
@@ -401,21 +430,21 @@ export function Canvas({
                 x2={line.end.x}
                 y2={line.end.y}
                 stroke={line.isReference ? "hsl(var(--ring))" : "hsl(var(--destructive))"}
-                strokeWidth={selectedItem?.id === line.id ? (2 / (viewBox.width / 800)) : (1 / (viewBox.width / 800))}
-                strokeDasharray="5,5"
+                strokeWidth={(selectedItem?.id === line.id ? 2 : 1.5) * zoomFactor}
+                strokeDasharray={`${5 * zoomFactor},${5 * zoomFactor}`}
                 className='cursor-pointer'
               />
               <circle cx={line.start.x} cy={line.start.y} r={circleRadius} fill={line.isReference ? "hsl(var(--ring))" : "hsl(var(--destructive))"} />
               <circle cx={line.end.x} cy={line.end.y} r={circleRadius} fill={line.isReference ? "hsl(var(--ring))" : "hsl(var(--destructive))"} />
               <g transform={`translate(${midX}, ${midY}) rotate(${angle})`}>
                   <text 
-                      y={-8}
+                      y={-8 * zoomFactor}
                       textAnchor="middle"
                       fill={line.isReference ? "hsl(var(--ring))" : "hsl(var(--destructive))"}
-                      fontSize="12"
+                      fontSize={12 * zoomFactor}
                       paintOrder="stroke"
                       stroke="hsl(var(--background))"
-                      strokeWidth="3px"
+                      strokeWidth={3 * zoomFactor}
                       strokeLinecap="butt"
                       strokeLinejoin="miter"
                       className="font-semibold select-none"
@@ -430,9 +459,9 @@ export function Canvas({
           
           {isDrawingRoom && (
             <g>
-              <polyline points={getDrawingRoomPath()} fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeDasharray="5,5" />
+              <polyline points={getDrawingRoomPath()} fill="none" stroke="hsl(var(--primary))" strokeWidth={2 * zoomFactor} strokeDasharray={`${5*zoomFactor},${5*zoomFactor}`} />
               {currentRoomPoints.map((p, i) => (
-                <circle key={i} cx={p.x} cy={p.y} r="4" fill={i === 0 ? 'hsl(var(--ring))' : 'hsl(var(--primary))'} />
+                <circle key={i} cx={p.x} cy={p.y} r={4 * zoomFactor} fill={i === 0 ? 'hsl(var(--ring))' : 'hsl(var(--primary))'} />
               ))}
             </g>
           )}

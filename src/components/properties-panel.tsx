@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2 } from "lucide-react";
-import type { BaseItem, Measurement, Surface, Room } from "@/lib/types";
+import type { BaseItem, Measurement, Surface, Room, Furniture } from "@/lib/types";
 import { AIPanel } from "./ai-panel";
 import { ScrollArea } from "./ui/scroll-area";
 import { getDistance, formatDistance } from "@/lib/geometry";
@@ -20,8 +20,8 @@ interface PropertiesPanelProps {
   onDeleteItem: (item: BaseItem | null) => void;
   onSelectItem: (item: BaseItem | null) => void;
   allItems: BaseItem[];
-  allFurniture: any[];
-  rooms: any[];
+  allFurniture: Furniture[];
+  rooms: Room[];
   onAddSurface: (surface: Surface) => void;
 }
 
@@ -86,7 +86,7 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
     return (
       <div className="p-4 space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="font-semibold capitalize">{typeName}: {('name' in selectedItem) ? selectedItem.name : ''}</h3>
+          <h3 className="font-semibold capitalize">{typeName}: {('name' in selectedItem && selectedItem.name) ? selectedItem.name : ''}</h3>
           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => onDeleteItem(selectedItem)}><Trash2 className="w-4 h-4" /></Button>
         </div>
         
