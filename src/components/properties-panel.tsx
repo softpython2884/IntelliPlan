@@ -29,7 +29,7 @@ interface PropertiesPanelProps {
 }
 
 export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSelectItem, allItems, allFurniture, rooms, onAddSurface, scale, onScaleChange, onReorderItem }: PropertiesPanelProps) {
-  const [activeTab, setActiveTab] = useState("properties");
+  const [activeTab, setActiveTab] = useState("inspector");
   
   const handlePropertyChange = (prop: string, value: any) => {
     if (!selectedItem) return;
@@ -75,11 +75,7 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
   
   const renderProperties = () => {
     if (!selectedItem) {
-      return (
-        <div className="p-4 text-center text-sm text-muted-foreground">
-          <p>Select an item to see its properties.</p>
-        </div>
-      );
+        return <LayersPanel items={allItems} selectedItem={selectedItem} onSelectItem={onSelectItem} onToggleVisibility={onUpdateItem} onReorderItem={onReorderItem} />;
     }
 
     const typeName = selectedItem.type.charAt(0).toUpperCase() + selectedItem.type.slice(1);
@@ -201,7 +197,9 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
               </div>
             </>
           )}
-
+        <Button variant="outline" size="sm" onClick={() => onSelectItem(null)} className="w-full">
+          Deselect (show layers)
+        </Button>
       </div>
     );
   };
@@ -209,17 +207,13 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
   return (
     <Card className="w-80 border-0 border-l rounded-none shrink-0">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col h-full">
-        <TabsList className="grid w-full grid-cols-3 shrink-0">
-          <TabsTrigger value="properties">Properties</TabsTrigger>
-          <TabsTrigger value="layers">Layers</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 shrink-0">
+          <TabsTrigger value="inspector">Inspector</TabsTrigger>
           <TabsTrigger value="ai">AI Assistant</TabsTrigger>
         </TabsList>
         <ScrollArea className="flex-1">
-          <TabsContent value="properties" className="mt-0">
+          <TabsContent value="inspector" className="mt-0">
               {renderProperties()}
-          </TabsContent>
-          <TabsContent value="layers" className="mt-0">
-              <LayersPanel items={allItems} selectedItem={selectedItem} onSelectItem={onSelectItem} onToggleVisibility={onUpdateItem} onReorderItem={onReorderItem} />
           </TabsContent>
           <TabsContent value="ai" className="mt-0">
             <AIPanel allFurniture={allFurniture} rooms={rooms} />
