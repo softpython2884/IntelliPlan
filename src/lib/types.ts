@@ -6,6 +6,7 @@ export interface Point {
 export interface BaseItem {
   id: string;
   type: 'room' | 'furniture' | 'annotation' | 'measurement';
+  visible?: boolean;
 }
 
 export interface Room extends BaseItem {
@@ -38,4 +39,6 @@ export interface Measurement extends BaseItem {
     type: 'measurement';
     start: Point;
     end: Point;
+    isReference?: boolean;
+    realLength?: number; // in meters
 }

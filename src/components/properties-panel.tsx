@@ -5,32 +5,57 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2 } from "lucide-react";
-import type { Room, Furniture, Annotation, Measurement } from "@/lib/types";
+import { Trash2, Eye, EyeOff } from "lucide-react";
+import type { Room, Furniture, Annotation, Measurement, BaseItem } from "@/lib/types";
 import { AIPanel } from "./ai-panel";
 import { ScrollArea } from "./ui/scroll-area";
-import { getDistance } from "@/lib/geometry";
+import { getDistance, formatDistance } from "@/lib/geometry";
+import { LayersPanel } from "./layers-panel";
 
 interface PropertiesPanelProps {
-  selectedItem: Room | Furniture | Annotation | Measurement | null;
-  onUpdateItem: (item: Room | Furniture | Annotation | Measurement) => void;
-  onDeleteItem: (item: Room | Furniture | Annotation | Measurement | null) => void;
+  selectedItem: BaseItem | null;
+  onUpdateItem: (item: BaseItem) => void;
+  onDeleteItem: (item: BaseItem | null) => void;
+  onSelectItem: (item: BaseItem | null) => void;
+  allItems: BaseItem[];
   allFurniture: Furniture[];
   rooms: Room[];
 }
 
-export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, allFurniture, rooms }: PropertiesPanelProps) {
+export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, allItems, onSelectItem, allFurniture, rooms }: PropertiesPanelProps) {
   const handlePropertyChange = (prop: string, value: any) => {
     if (!selectedItem) return;
+    
+    if (selectedItem.type === 'measurement' && prop === 'realLength') {
+      const pixelLength = getDistance(selectedItem.start, selectedItem.end);
+      const newScale = {
+        pixels: pixelLength,
+        meters: value,
+      };
+      // This is a bit of a hack, we should probably lift the scale state up
+      // and have a dedicated function to update it.
+      // For now, we update the measurement and expect the page to handle the scale.
+      const updatedItem = { ...selectedItem, [prop]: value, isReference: true };
+      onUpdateItem(updatedItem);
+
+       // Demote other reference lines
+       allItems.forEach(item => {
+        if (item.type === 'measurement' && item.id !== selectedItem.id && item.isReference) {
+          onUpdateItem({ ...item, isReference: false });
+        }
+      });
+      return;
+    }
+
     onUpdateItem({ ...selectedItem, [prop]: value });
   };
   
   const renderProperties = () => {
     if (!selectedItem) {
-      return <div className="p-4 text-sm text-center text-muted-foreground">Select an item to see its properties.</div>;
+      return <LayersPanel items={allItems} onSelectItem={onSelectItem} onToggleVisibility={onUpdateItem} />;
     }
 
-    const typeName = selectedItem.type === 'measurement' ? 'Measurement' : selectedItem.type;
+    const typeName = selectedItem.type.charAt(0).toUpperCase() + selectedItem.type.slice(1);
 
     return (
       <div className="p-4 space-y-4">
@@ -85,8 +110,14 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, allF
 
         {(selectedItem.type === 'measurement') && (
           <div>
-            <Label>Pixel Length</Label>
+            <Label>Length</Label>
             <p className="text-sm text-muted-foreground">{getDistance(selectedItem.start, selectedItem.end).toFixed(2)}px</p>
+            {selectedItem.isReference && (
+              <div className="mt-2">
+                <Label htmlFor="realLength">Real Length (m)</Label>
+                <Input id="realLength" type="number" value={selectedItem.realLength || ''} onChange={(e) => handlePropertyChange('realLength', parseFloat(e.target.value))} />
+              </div>
+            )}
           </div>
         )}
 

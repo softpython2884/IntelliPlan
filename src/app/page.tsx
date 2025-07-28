@@ -6,7 +6,7 @@ import { Header } from "@/components/header";
 import { Toolbox } from "@/components/toolbox";
 import { Canvas } from "@/components/canvas";
 import { PropertiesPanel } from "@/components/properties-panel";
-import type { Furniture, Room, Annotation, Measurement } from "@/lib/types";
+import type { Furniture, Room, Annotation, Measurement, BaseItem } from "@/lib/types";
 import { ScalePanel } from "@/components/scale-panel";
 
 export default function Home() {
@@ -37,6 +37,7 @@ export default function Home() {
       width: 400,
       height: 300,
       name: 'New Room',
+      visible: true,
     };
     setRooms([...rooms, newRoom]);
     setSelectedItem(newRoom);
@@ -52,6 +53,7 @@ export default function Home() {
       height: item.height,
       name: item.name,
       rotation: 0,
+      visible: true,
     };
     setFurniture([...furniture, newFurniture]);
     setSelectedItem(newFurniture);
@@ -64,12 +66,13 @@ export default function Home() {
       x: 150,
       y: 150,
       text: 'New Note',
+      visible: true,
     };
     setAnnotations([...annotations, newAnnotation]);
     setSelectedItem(newAnnotation);
   }
 
-  const updateItem = (item: Room | Furniture | Annotation | Measurement) => {
+  const updateItem = (item: BaseItem) => {
     if (item.type === 'room') {
       setRooms(rooms.map(r => r.id === item.id ? item as Room : r));
     } else if (item.type === 'furniture') {
@@ -79,8 +82,12 @@ export default function Home() {
     } else if (item.type === 'measurement') {
       setMeasurements(measurements.map(m => m.id === item.id ? item as Measurement : m));
     }
-    setSelectedItem(item);
+    if(selectedItem?.id === item.id) {
+        setSelectedItem(item as any);
+    }
   };
+
+  const allItems = [...rooms, ...furniture, ...annotations, ...measurements];
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground font-body">
@@ -95,7 +102,7 @@ export default function Home() {
           onImageUpload={setBackgroundImage}
         />
         <main className="flex-1 relative">
-           {tool === 'measure' && <ScalePanel scale={scale} setScale={setScale} />}
+           {tool === 'measure' && <ScalePanel />}
           <Canvas
             tool={tool}
             rooms={rooms}
@@ -104,6 +111,7 @@ export default function Home() {
             measurements={measurements}
             setMeasurements={setMeasurements}
             scale={scale}
+            setScale={setScale}
             selectedItem={selectedItem}
             onSelectItem={setSelectedItem}
             onUpdateItem={updateItem}
@@ -114,6 +122,7 @@ export default function Home() {
         <PropertiesPanel
           selectedItem={selectedItem}
           onUpdateItem={updateItem}
+          onSelectItem={setSelectedItem}
           onDeleteItem={(item) => {
             if (!item) return;
             if (item.type === 'room') setRooms(rooms.filter(r => r.id !== item.id));
@@ -122,6 +131,7 @@ export default function Home() {
             if (item.type === 'measurement') setMeasurements(measurements.filter(m => m.id !== item.id));
             setSelectedItem(null);
           }}
+          allItems={allItems}
           allFurniture={furniture}
           rooms={rooms}
         />
