@@ -23,9 +23,11 @@ interface PropertiesPanelProps {
   allFurniture: Furniture[];
   rooms: Room[];
   onAddSurface: (surface: Surface) => void;
+  scale: { pixels: number, meters: number };
+  onScaleChange: (scale: { pixels: number, meters: number }) => void;
 }
 
-export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSelectItem, allItems, allFurniture, rooms, onAddSurface }: PropertiesPanelProps) {
+export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSelectItem, allItems, allFurniture, rooms, onAddSurface, scale, onScaleChange }: PropertiesPanelProps) {
   const [activeTab, setActiveTab] = useState("properties");
   
   const handlePropertyChange = (prop: string, value: any) => {
@@ -34,9 +36,7 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
     if (selectedItem.type === 'measurement' && prop === 'realLength') {
       const pixelLength = getDistance(selectedItem.start, selectedItem.end);
       if (value > 0) {
-        // This is a bit of a hack, we should probably lift the scale state up
-        // and have a dedicated function to update it.
-        // For now, we update the measurement and expect the page to handle the scale.
+        onScaleChange({ pixels: pixelLength, meters: value });
         const updatedItem = { ...selectedItem, [prop]: value, isReference: true };
         onUpdateItem(updatedItem);
 
@@ -140,7 +140,7 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
           <>
             <div>
               <Label>Length</Label>
-              <p className="text-sm text-muted-foreground">{getDistance(selectedItem.start, selectedItem.end).toFixed(2)}px</p>
+              <p className="text-sm text-muted-foreground">{formatDistance(getDistance(selectedItem.start, selectedItem.end), scale)}</p>
               <div className="mt-2">
                 <Label htmlFor="realLength">Set as Reference: Real Length (m)</Label>
                 <Input id="realLength" type="number" placeholder="e.g. 2.5" step="0.01" value={selectedItem.realLength || ''} onChange={(e) => handlePropertyChange('realLength', parseFloat(e.target.value))} />
@@ -207,5 +207,3 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
     </Card>
   );
 }
-
-    

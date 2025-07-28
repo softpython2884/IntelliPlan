@@ -75,7 +75,6 @@ export function Canvas({
         const svgAspectRatio = svgWidth / svgHeight;
 
         let newWidth, newHeight;
-
         if (imgAspectRatio > svgAspectRatio) {
             newWidth = svgWidth;
             newHeight = newWidth / imgAspectRatio;
@@ -83,7 +82,6 @@ export function Canvas({
             newHeight = svgHeight;
             newWidth = newHeight * imgAspectRatio;
         }
-
         const newX = (svgWidth - newWidth) / 2;
         const newY = (svgHeight - newHeight) / 2;
         
@@ -100,9 +98,7 @@ export function Canvas({
       setCurrentRoomPoints([]);
     } else if (tool !== 'draw-room' && isDrawingRoom) {
       // If tool changed, cancel drawing
-      setIsDrawingRoom(false);
-      setCurrentRoomPoints([]);
-      setPreviewPoint(null);
+      cancelDrawing();
     }
   }, [tool, isDrawingRoom]);
 
@@ -147,22 +143,30 @@ export function Canvas({
     const point = getSVGPoint(e);
     
     if (tool === 'measure') {
-        const isFirstMeasurement = !items.some(i => i.type === 'measurement' && i.isReference);
-        const newMeasurement: Measurement = {
-          id: `measure-${Date.now()}`, 
-          type: 'measurement', 
-          start: point, 
-          end: point, 
-          visible: true, 
-          isReference: isFirstMeasurement,
-        };
-        setIsMeasuring(true);
-        setCurrentMeasurement(newMeasurement);
-        setItems([...items, newMeasurement]);
+        if (!isMeasuring) {
+            const isFirstMeasurement = !items.some(i => i.type === 'measurement' && i.isReference);
+            const newMeasurement: Measurement = {
+              id: `measure-${Date.now()}`, 
+              type: 'measurement', 
+              start: point, 
+              end: point, 
+              visible: true, 
+              isReference: isFirstMeasurement,
+            };
+            setIsMeasuring(true);
+            setCurrentMeasurement(newMeasurement);
+            setItems([...items, newMeasurement]);
+        } else if (currentMeasurement) {
+            const finalMeasurement = { ...currentMeasurement, end: point };
+            onUpdateItem(finalMeasurement);
+            onSelectItem(finalMeasurement);
+            setIsMeasuring(false);
+            setCurrentMeasurement(null);
+            setTool('select');
+        }
     } else if (tool === 'select' && item?.type === 'room' && pointIndex !== undefined) {
       setIsResizing({item: item as Room, pointIndex});
     } else if (tool === 'draw-room' && isDrawingRoom) {
-      // Check if clicking on the first point to close the shape
       if (currentRoomPoints.length > 2 && getDistance(point, currentRoomPoints[0]) < 10 * zoomFactor) {
         finalizeRoom();
       } else {
@@ -178,7 +182,7 @@ export function Canvas({
     if (tool === 'measure' && isMeasuring && currentMeasurement) {
       const updatedMeasurement = { ...currentMeasurement, end: point };
       setCurrentMeasurement(updatedMeasurement);
-      setItems(items.map(item => item.id === currentMeasurement.id ? updatedMeasurement : item));
+      onUpdateItem(updatedMeasurement);
     } else if (isResizing) {
         const room = isResizing.item;
         const newPoints = [...room.points];
@@ -192,12 +196,6 @@ export function Canvas({
   const handleMouseUp = (e: React.MouseEvent) => {
     if (isResizing) {
         setIsResizing(null);
-    }
-    if (isMeasuring && currentMeasurement) {
-        onSelectItem(currentMeasurement);
-        setIsMeasuring(false);
-        setCurrentMeasurement(null);
-        setTool('select');
     }
   };
 
@@ -392,7 +390,7 @@ export function Canvas({
                 y={0}
                 width={item.width}
                 height={item.height}
-                fill={selectedItem?.id === item.id ? "hsl(var(--accent) / 0.3)" : "hsl(var(--accent) / 0.6)"}
+                fill={selectedItem?.id === item.id ? "hsl(var(--accent) / 0.1)" : "hsl(var(--accent) / 0.6)"}
                 stroke="hsl(var(--accent-foreground))"
                 strokeWidth={selectedItem?.id === item.id ? 2 * zoomFactor : 1 * zoomFactor}
                 rx="4"
@@ -441,7 +439,7 @@ export function Canvas({
                   <text 
                       y={-8 * zoomFactor}
                       textAnchor="middle"
-                      fill={line.isReference ? "hsl(var(--ring))" : "hsl(var(--destructive-foreground))"}
+                      fill={line.isReference ? "hsl(var(--foreground))" : "hsl(var(--destructive))"}
                       stroke={"hsl(var(--background))"}
                       strokeWidth={3 * zoomFactor}
                       paintOrder="stroke"
@@ -472,5 +470,3 @@ export function Canvas({
     </div>
   );
 }
-
-    

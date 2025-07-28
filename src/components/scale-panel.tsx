@@ -16,10 +16,10 @@ export function ScalePanel({ tool }: ScalePanelProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Draw a line on a known dimension (like a door or window) to set the scale for your plan.
+            Click twice to draw a line on a known dimension (like a door or wall).
           </p>
           <p className="text-xs text-muted-foreground">
-            After drawing your first measurement line, select it and enter its real-world length in the properties panel.
+            After drawing the line, select it and enter its real-world length in the properties panel to set the scale for the entire plan.
           </p>
         </CardContent>
       </Card>
