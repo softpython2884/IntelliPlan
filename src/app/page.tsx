@@ -98,6 +98,7 @@ export default function Home() {
             onSelectItem={setSelectedItem}
             onUpdateItem={updateItem}
             backgroundImage={backgroundImage}
+            setTool={setTool}
           />
         </main>
         <PropertiesPanel

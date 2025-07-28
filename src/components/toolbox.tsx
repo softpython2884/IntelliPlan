@@ -1,5 +1,5 @@
 "use client";
-import { MousePointer, Ruler, Square, Sofa, MessageSquare, Upload, Bed, Lamp, Tv } from "lucide-react";
+import { MousePointer, Ruler, Square, Sofa, MessageSquare, Upload, Bed, Lamp, Tv, Hand } from "lucide-react";
 import type { FC } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +41,7 @@ export function Toolbox({ currentTool, onToolSelect, onAddRoom, onAddFurniture, 
           <TooltipProvider>
             <div className="grid grid-cols-3 gap-2 mb-4">
               <ToolButton name="select" icon={MousePointer} currentTool={currentTool} onSelect={onToolSelect} />
+              <ToolButton name="pan" icon={Hand} currentTool={currentTool} onSelect={onToolSelect} />
               <ToolButton name="measure" icon={Ruler} currentTool={currentTool} onSelect={onToolSelect} />
             </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Room, Furniture, Annotation, Point } from '@/lib/types';
 
 interface DraggableOptions {
@@ -8,10 +8,35 @@ interface DraggableOptions {
   tool: string;
   onSelectItem: (item: Room | Furniture | Annotation | null) => void;
   onUpdateItem: (item: Room | Furniture | Annotation) => void;
+  viewBox: { x: number, y: number, width: number, height: number };
+  setViewBox: React.Dispatch<React.SetStateAction<{ x: number, y: number, width: number, height: number }>>;
+  setTool: (tool: string) => void;
 }
 
-export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem }: DraggableOptions) {
+export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem, viewBox, setViewBox, setTool }: DraggableOptions) {
   const [draggingItem, setDraggingItem] = useState<{ item: Room | Furniture | Annotation; offset: Point } | null>(null);
+  const [panning, setPanning] = useState(false);
+  const [panStart, setPanStart] = useState<Point>({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === ' ') {
+        e.preventDefault();
+        setTool('pan');
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === ' ' && tool === 'pan') {
+        setTool('select');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [tool, setTool]);
 
   const getSVGPoint = (e: React.MouseEvent): Point => {
     if (!svgRef.current) return { x: 0, y: 0 };
@@ -26,32 +51,52 @@ export function useDraggable({ svgRef, tool, onSelectItem, onUpdateItem }: Dragg
     return { x: 0, y: 0 };
   };
 
-  const handleMouseDown = (e: React.MouseEvent, item: Room | Furniture | Annotation) => {
-    if (tool !== 'select') return;
-    e.stopPropagation();
-    onSelectItem(item);
-    const point = getSVGPoint(e);
-    setDraggingItem({
-      item,
-      offset: { x: point.x - item.x, y: point.y - item.y },
-    });
+  const getClientPoint = (e: React.MouseEvent): Point => {
+    return { x: e.clientX, y: e.clientY };
+  };
+
+  const handleMouseDown = (e: React.MouseEvent, item?: Room | Furniture | Annotation) => {
+    if (item && tool === 'select') {
+      e.stopPropagation();
+      onSelectItem(item);
+      const point = getSVGPoint(e);
+      setDraggingItem({
+        item,
+        offset: { x: point.x - item.x, y: point.y - item.y },
+      });
+    } else if (tool === 'pan') {
+      e.stopPropagation();
+      setPanning(true);
+      setPanStart(getClientPoint(e));
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!draggingItem) return;
-    const point = getSVGPoint(e);
-    const newX = point.x - draggingItem.offset.x;
-    const newY = point.y - draggingItem.offset.y;
+    if (draggingItem) {
+      const point = getSVGPoint(e);
+      const newX = point.x - draggingItem.offset.x;
+      const newY = point.y - draggingItem.offset.y;
 
-    const updatedItem = { ...draggingItem.item, x: newX, y: newY };
-    onUpdateItem(updatedItem);
-    // Also update the dragging item state to avoid lag
-    setDraggingItem(prev => prev ? { ...prev, item: updatedItem } : null);
+      const updatedItem = { ...draggingItem.item, x: newX, y: newY };
+      onUpdateItem(updatedItem);
+      // Also update the dragging item state to avoid lag
+      setDraggingItem(prev => prev ? { ...prev, item: updatedItem } : null);
+    } else if (panning && svgRef.current) {
+        const clientPoint = getClientPoint(e);
+        const scale = viewBox.width / svgRef.current.clientWidth;
+
+        const dx = (clientPoint.x - panStart.x) * scale;
+        const dy = (clientPoint.y - panStart.y) * scale;
+
+        setViewBox(prev => ({ ...prev, x: prev.x - dx, y: prev.y - dy }));
+        setPanStart(clientPoint);
+    }
   };
 
   const handleMouseUp = () => {
     setDraggingItem(null);
+    setPanning(false);
   };
 
-  return { draggingItem, handleMouseDown, handleMouseMove, handleMouseUp };
+  return { draggingItem, panning, panStart, handleMouseDown, handleMouseMove, handleMouseUp };
 }
