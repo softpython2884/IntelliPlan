@@ -74,7 +74,11 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
   
   const renderProperties = () => {
     if (!selectedItem) {
-      return <LayersPanel items={allItems} onSelectItem={onSelectItem} onToggleVisibility={onUpdateItem} />;
+      return (
+        <div className="p-4 text-center text-sm text-muted-foreground">
+          <p>Select an item to see its properties.</p>
+        </div>
+      );
     }
 
     const typeName = selectedItem.type.charAt(0).toUpperCase() + selectedItem.type.slice(1);
@@ -204,15 +208,19 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSe
   return (
     <Card className="w-80 border-0 border-l rounded-none shrink-0">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col h-full">
-        <TabsList className="grid w-full grid-cols-2 shrink-0">
+        <TabsList className="grid w-full grid-cols-3 shrink-0">
           <TabsTrigger value="properties">Properties</TabsTrigger>
+          <TabsTrigger value="layers">Layers</TabsTrigger>
           <TabsTrigger value="ai">AI Assistant</TabsTrigger>
         </TabsList>
         <ScrollArea className="flex-1">
           <TabsContent value="properties" className="mt-0">
               {renderProperties()}
           </TabsContent>
-          <TabsContent value="ai">
+          <TabsContent value="layers" className="mt-0">
+              <LayersPanel items={allItems} onSelectItem={onSelectItem} onToggleVisibility={onUpdateItem} />
+          </TabsContent>
+          <TabsContent value="ai" className="mt-0">
             <AIPanel allFurniture={allFurniture} rooms={rooms} />
           </TabsContent>
         </ScrollArea>

@@ -25,6 +25,8 @@ export function LayersPanel({ items, onSelectItem, onToggleVisibility }: LayersP
   const getLayerName = (item: BaseItem) => {
     if ('name' in item && item.name) return item.name;
     if (item.type === 'surface') return `${item.surfaceType.charAt(0).toUpperCase() + item.surfaceType.slice(1)} Surface`;
+    if (item.type === 'measurement' && item.isReference) return `Reference Scale`;
+    if (item.type === 'measurement' && !item.isSurface) return `Measurement`;
     return item.type.charAt(0).toUpperCase() + item.type.slice(1);
   }
 
@@ -37,6 +39,8 @@ export function LayersPanel({ items, onSelectItem, onToggleVisibility }: LayersP
             <p className="p-2 text-xs text-center text-muted-foreground">The canvas is empty.</p>
           )}
           {reversedItems.map((item) => {
+            if (item.type === 'measurement' && item.isSurface) return null; // Don't show converted measurements
+
             const Icon = itemIcons[item.type];
             const name = getLayerName(item);
             return (

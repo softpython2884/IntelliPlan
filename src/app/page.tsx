@@ -199,7 +199,7 @@ export default function Home() {
       if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
         if (selectedItem && !isTextInput) {
           setClipboard(selectedItem);
-          toast({ title: "Copied", description: `${('name' in selectedItem ? selectedItem.name : selectedItem.type)} copied to clipboard.`});
+          toast({ title: "Copied", description: `${('name' in selectedItem && selectedItem.name) || selectedItem.type} copied to clipboard.`});
         }
       }
 
@@ -321,5 +321,3 @@ function getPolygonCentroid(points: Point[]): Point {
 
     return centroid;
 }
-
-    
