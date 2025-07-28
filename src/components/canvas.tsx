@@ -45,7 +45,7 @@ export function Canvas({
   const [isMeasuring, setIsMeasuring] = useState(false);
   const [currentMeasurementId, setCurrentMeasurementId] = useState<string | null>(null);
   const [isResizing, setIsResizing] = useState<{item: Room, pointIndex: number} | null>(null);
-  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0, x: 0, y: 0 });
   const [isDrawingRoom, setIsDrawingRoom] = useState(false);
   const [currentRoomPoints, setCurrentRoomPoints] = useState<Point[]>([]);
   const [previewPoint, setPreviewPoint] = useState<Point | null>(null);
@@ -69,30 +69,26 @@ export function Canvas({
     if (backgroundImage) {
       const img = new Image();
       img.onload = () => {
-        setImageDimensions({ width: img.width, height: img.height });
-        // Center and fit image
         const svgWidth = svgRef.current?.clientWidth || 800;
         const svgHeight = svgRef.current?.clientHeight || 600;
         const imgAspectRatio = img.width / img.height;
         const svgAspectRatio = svgWidth / svgHeight;
 
-        let newWidth, newHeight, newX, newY;
+        let newWidth, newHeight;
 
         if (imgAspectRatio > svgAspectRatio) {
             newWidth = svgWidth;
             newHeight = newWidth / imgAspectRatio;
-            newX = 0;
-            newY = (svgHeight - newHeight) / 2;
         } else {
             newHeight = svgHeight;
             newWidth = newHeight * imgAspectRatio;
-            newY = 0;
-            newX = (svgWidth - newWidth) / 2;
         }
+
+        const newX = (svgWidth - newWidth) / 2;
+        const newY = (svgHeight - newHeight) / 2;
         
         setViewBox({ x: 0, y: 0, width: svgWidth, height: svgHeight });
-        setImageDimensions({width: newWidth, height: newHeight});
-
+        setImageDimensions({width: newWidth, height: newHeight, x: newX, y: newY});
       };
       img.src = backgroundImage;
     }
@@ -151,14 +147,17 @@ export function Canvas({
     const point = getSVGPoint(e);
     
     if (tool === 'measure') {
-      setIsMeasuring(true);
-      const isFirstMeasurement = !items.some(i => i.type === 'measurement' && i.isReference);
-      const newId = `measure-${Date.now()}`;
-      const newLine: Measurement = {
-        id: newId, type: 'measurement', start: point, end: point, visible: true, isReference: isFirstMeasurement,
-      };
-      setCurrentMeasurementId(newId);
-      setItems([...items, newLine]);
+      const isFirstClick = !isMeasuring;
+      if (isFirstClick) {
+        setIsMeasuring(true);
+        const isFirstMeasurement = !items.some(i => i.type === 'measurement' && i.isReference);
+        const newId = `measure-${Date.now()}`;
+        const newLine: Measurement = {
+          id: newId, type: 'measurement', start: point, end: point, visible: true, isReference: isFirstMeasurement,
+        };
+        setCurrentMeasurementId(newId);
+        setItems([...items, newLine]);
+      }
     } else if (tool === 'select' && item?.type === 'room' && pointIndex !== undefined) {
       setIsResizing({item: item as Room, pointIndex});
     } else if (tool === 'draw-room' && isDrawingRoom) {
@@ -349,7 +348,7 @@ export function Canvas({
         <rect width="100%" height="100%" fill="url(#grid)" x={viewBox.x} y={viewBox.y} />
         
         {backgroundImage && (
-            <image href={backgroundImage} x={viewBox.x} y={viewBox.y} width={viewBox.width} height={viewBox.height} preserveAspectRatio="xMidYMid meet" style={{opacity: 0.5}} />
+            <image href={backgroundImage} x={imageDimensions.x} y={imageDimensions.y} width={imageDimensions.width} height={imageDimensions.height} style={{opacity: 0.5}} />
         )}
         
         <g>
@@ -440,7 +439,7 @@ export function Canvas({
                   <text 
                       y={-8 * zoomFactor}
                       textAnchor="middle"
-                      fill={line.isReference ? "hsl(var(--ring))" : "hsl(var(--destructive))"}
+                      fill={line.isReference ? "hsl(var(--foreground))" : "hsl(var(--destructive))"}
                       fontSize={12 * zoomFactor}
                       paintOrder="stroke"
                       stroke="hsl(var(--background))"
