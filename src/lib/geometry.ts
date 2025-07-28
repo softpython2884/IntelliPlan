@@ -12,11 +12,16 @@ export function formatDistance(pixelDistance: number, scale: { pixels: number, m
       return `${overrideMeters.toFixed(2)} m`;
     }
 
-    if (scale.pixels === 0 || !scale.pixels) return `${pixelDistance.toFixed(0)}px`;
+    if (!scale || scale.pixels === 0 || !scale.pixels) return `${pixelDistance.toFixed(0)}px`;
     const realDistance = (pixelDistance / scale.pixels) * scale.meters;
     
+    if (realDistance < 0.01) {
+        return `${(realDistance * 1000).toFixed(1)} mm`;
+    }
     if (realDistance < 1) {
         return `${(realDistance * 100).toFixed(1)} cm`;
     }
     return `${realDistance.toFixed(2)} m`;
 }
+
+    

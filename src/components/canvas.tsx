@@ -41,6 +41,7 @@ export function Canvas({
   const svgRef = useRef<SVGSVGElement>(null);
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, width: 800, height: 600 });
   const [isMeasuring, setIsMeasuring] = useState(false);
+  const [currentMeasurementId, setCurrentMeasurementId] = useState<string | null>(null);
   const [isResizing, setIsResizing] = useState<{pointIndex: number, corner: string} | null>(null);
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
 
@@ -97,9 +98,11 @@ export function Canvas({
     if (tool === 'measure') {
       setIsMeasuring(true);
       const isFirstMeasurement = !items.some(i => i.type === 'measurement' && i.isReference);
+      const newId = `measure-${Date.now()}`;
       const newLine: Measurement = {
-        id: `measure-${Date.now()}`, type: 'measurement', start: point, end: point, visible: true, isReference: isFirstMeasurement,
+        id: newId, type: 'measurement', start: point, end: point, visible: true, isReference: isFirstMeasurement,
       };
+      setCurrentMeasurementId(newId);
       setItems([...items, newLine]);
     } else {
       handleDraggableMouseDown(e, item);
@@ -107,9 +110,9 @@ export function Canvas({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (tool === 'measure' && isMeasuring) {
+    if (tool === 'measure' && isMeasuring && currentMeasurementId) {
       const point = getSVGPoint(e);
-      const currentLine = items.find(i => i.type === 'measurement' && (i as Measurement).end.x === (i as Measurement).start.x && (i as Measurement).end.y === (i as Measurement).start.y) as Measurement;
+      const currentLine = items.find(i => i.id === currentMeasurementId) as Measurement;
       if (currentLine) {
         const updatedLine = { ...currentLine, end: point };
         onUpdateItem(updatedLine);
@@ -157,9 +160,10 @@ export function Canvas({
   const handleMouseUp = (e: React.MouseEvent) => {
     if (tool === 'measure' && isMeasuring) {
       const point = getSVGPoint(e);
-      const currentLine = items.find(i => i.type === 'measurement' && (i as Measurement).end.x === (i as Measurement).end.x && (i as Measurement).end.y === (i as Measurement).end.y) as Measurement;
+      const currentLine = items.find(i => i.id === currentMeasurementId) as Measurement;
       if(currentLine) onSelectItem(currentLine)
       setIsMeasuring(false);
+      setCurrentMeasurementId(null);
       setTool('select');
     }
     if (isResizing) {
@@ -169,7 +173,7 @@ export function Canvas({
 
 
   const handleCanvasClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget || (e.target as SVGElement).tagName === 'rect' && !(e.target as SVGElement).hasAttribute('data-item-id')) {
+    if (e.target === e.currentTarget || (e.target as SVGElement).tagName === 'image' || ((e.target as SVGElement).tagName === 'rect' && !(e.target as SVGElement).hasAttribute('data-item-id'))) {
         onSelectItem(null);
     }
   };
@@ -282,11 +286,11 @@ export function Canvas({
         </defs>
         <rect width="100%" height="100%" fill="url(#grid)" x={viewBox.x} y={viewBox.y} />
         
+        {backgroundImage && (
+            <image href={backgroundImage} x="0" y="0" width={imageDimensions.width} height={imageDimensions.height} style={{opacity: 0.5}} />
+        )}
+        
         <g>
-          {backgroundImage && (
-             <image href={backgroundImage} x="0" y="0" width={imageDimensions.width} height={imageDimensions.height} style={{opacity: 0.5}} />
-          )}
-
           {rooms.map((room) => ( room.visible &&
             <g key={room.id} onMouseDown={(e) => handleMouseDown(e, room)} className={tool === 'select' ? 'cursor-move' : ''}>
               <path
@@ -395,3 +399,5 @@ export function Canvas({
     </div>
   );
 }
+
+    
