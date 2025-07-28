@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2 } from "lucide-react";
-import type { BaseItem, Surface } from "@/lib/types";
+import type { BaseItem, Measurement, Surface } from "@/lib/types";
 import { AIPanel } from "./ai-panel";
 import { ScrollArea } from "./ui/scroll-area";
 import { getDistance } from "@/lib/geometry";
@@ -24,7 +24,7 @@ interface PropertiesPanelProps {
   rooms: any[];
 }
 
-export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, allItems, onSelectItem, allFurniture, rooms }: PropertiesPanelProps) {
+export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, onSelectItem, allItems, allFurniture, rooms }: PropertiesPanelProps) {
   const [activeTab, setActiveTab] = useState("properties");
   
   const handlePropertyChange = (prop: string, value: any) => {
@@ -32,28 +32,49 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, allI
     
     if (selectedItem.type === 'measurement' && prop === 'realLength') {
       const pixelLength = getDistance(selectedItem.start, selectedItem.end);
-      const newScale = {
-        pixels: pixelLength,
-        meters: value,
-      };
-      // This is a bit of a hack, we should probably lift the scale state up
-      // and have a dedicated function to update it.
-      // For now, we update the measurement and expect the page to handle the scale.
-      const updatedItem = { ...selectedItem, [prop]: value, isReference: true };
-      onUpdateItem(updatedItem);
+      if (value > 0) {
+        const newScale = {
+          pixels: pixelLength,
+          meters: value,
+        };
+        // This is a bit of a hack, we should probably lift the scale state up
+        // and have a dedicated function to update it.
+        // For now, we update the measurement and expect the page to handle the scale.
+        const updatedItem = { ...selectedItem, [prop]: value, isReference: true };
+        onUpdateItem(updatedItem);
 
-       // Demote other reference lines
-       allItems.forEach(item => {
-        if (item.type === 'measurement' && item.id !== selectedItem.id && item.isReference) {
-          onUpdateItem({ ...item, isReference: false });
-        }
-      });
-      return;
+        // Demote other reference lines
+        allItems.forEach(item => {
+          if (item.type === 'measurement' && item.id !== selectedItem.id && item.isReference) {
+            onUpdateItem({ ...item, isReference: false });
+          }
+        });
+        return;
+      }
     }
 
     onUpdateItem({ ...selectedItem, [prop]: value });
   };
   
+  const handleConvertToSurface = () => {
+    if (!selectedItem || selectedItem.type !== 'measurement') return;
+
+    const measurement = selectedItem as Measurement;
+    const newSurface: Surface = {
+      id: `surface-${Date.now()}`,
+      type: 'surface',
+      start: measurement.start,
+      end: measurement.end,
+      surfaceType: 'wall',
+      thickness: 5,
+      visible: true,
+    };
+
+    onUpdateItem({ ...measurement, isSurface: true, visible: false }); // Hide original measurement
+    onUpdateItem(newSurface); // This will add it via page state
+    onSelectItem(newSurface);
+  };
+
   const renderProperties = () => {
     if (!selectedItem) {
       return <LayersPanel items={allItems} onSelectItem={onSelectItem} onToggleVisibility={onUpdateItem} />;
@@ -112,17 +133,21 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, allI
           </div>
         )}
 
-        {(selectedItem.type === 'measurement') && (
-          <div>
-            <Label>Length</Label>
-            <p className="text-sm text-muted-foreground">{getDistance(selectedItem.start, selectedItem.end).toFixed(2)}px</p>
-            {selectedItem.isReference && (
+        {(selectedItem.type === 'measurement' && !selectedItem.isSurface) && (
+          <>
+            <div>
+              <Label>Length</Label>
+              <p className="text-sm text-muted-foreground">{getDistance(selectedItem.start, selectedItem.end).toFixed(2)}px</p>
               <div className="mt-2">
-                <Label htmlFor="realLength">Real Length (m)</Label>
-                <Input id="realLength" type="number" value={selectedItem.realLength || ''} onChange={(e) => handlePropertyChange('realLength', parseFloat(e.target.value))} />
+                <Label htmlFor="realLength">Set as Reference: Real Length (m)</Label>
+                <Input id="realLength" type="number" placeholder="e.g. 2.5" step="0.01" value={selectedItem.realLength || ''} onChange={(e) => handlePropertyChange('realLength', parseFloat(e.target.value))} />
+                 <p className="text-xs text-muted-foreground mt-1">Set this to define the scale for the entire plan.</p>
               </div>
-            )}
-          </div>
+            </div>
+            <Button variant="outline" onClick={handleConvertToSurface} className="w-full">
+                Convert to Surface
+            </Button>
+          </>
         )}
         
         {selectedItem.type === 'surface' && (
@@ -168,7 +193,7 @@ export function PropertiesPanel({ selectedItem, onUpdateItem, onDeleteItem, allI
           <TabsTrigger value="ai">AI Assistant</TabsTrigger>
         </TabsList>
         <ScrollArea className="flex-1">
-          <TabsContent value="properties">
+          <TabsContent value="properties" className="mt-0">
               {renderProperties()}
           </TabsContent>
           <TabsContent value="ai">

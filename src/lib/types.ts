@@ -41,13 +41,15 @@ export interface Measurement extends BaseItem {
     end: Point;
     isReference?: boolean;
     realLength?: number; // in meters
+    isSurface?: boolean;
 }
 
 export type SurfaceType = 'wall' | 'window' | 'door' | 'other';
 
 export interface Surface extends BaseItem {
   type: 'surface';
-  points: Point[];
+  start: Point;
+  end: Point;
   surfaceType: SurfaceType;
   thickness: number; // in pixels
 }

@@ -138,6 +138,7 @@ export default function Home() {
             if (item.type === 'surface') setSurfaces(surfaces.filter(s => s.id !== item.id));
             setSelectedItem(null);
           }}
+          onSelectItem={setSelectedItem}
           allItems={allItems}
           allFurniture={furniture}
           rooms={rooms}

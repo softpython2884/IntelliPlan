@@ -41,8 +41,6 @@ export function Canvas({
   const svgRef = useRef<SVGSVGElement>(null);
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, width: 800, height: 600 });
   const [isMeasuring, setIsMeasuring] = useState(false);
-  const [isDrawingSurface, setIsDrawingSurface] = useState(false);
-  const [currentSurface, setCurrentSurface] = useState<Surface | null>(null);
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver(entries => {
@@ -90,69 +88,37 @@ export function Canvas({
         id: `measure-${Date.now()}`, type: 'measurement', start: point, end: point, visible: true, isReference: isFirstMeasurement,
       };
       setItems([...items, newLine]);
-      setCurrentSurface(null); // To avoid conflicts
-    } else if (tool === 'surface') {
-      setIsDrawingSurface(true);
-      if (currentSurface) {
-        const updatedSurface = { ...currentSurface, points: [...currentSurface.points, point] };
-        onUpdateItem(updatedSurface);
-        setCurrentSurface(updatedSurface);
-      } else {
-        const newSurface: Surface = {
-          id: `surface-${Date.now()}`, type: 'surface', points: [point, point], visible: true, surfaceType: 'wall', thickness: 5,
-        };
-        setItems([...items, newSurface]);
-        setCurrentSurface(newSurface);
-      }
     } else {
       handleDraggableMouseDown(e, item);
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    const point = getSVGPoint(e);
     if (tool === 'measure' && isMeasuring) {
-      const currentLine = items.find(i => i.id.startsWith('measure-') && (i as Measurement).end === (i as Measurement).start) as Measurement;
+      const point = getSVGPoint(e);
+      const currentLine = items.find(i => i.type === 'measurement' && (i as Measurement).end.x === (i as Measurement).start.x && (i as Measurement).end.y === (i as Measurement).start.y) as Measurement;
       if (currentLine) {
         const updatedLine = { ...currentLine, end: point };
         onUpdateItem(updatedLine);
       }
-    } else if (tool === 'surface' && isDrawingSurface && currentSurface) {
-        const newPoints = [...currentSurface.points];
-        newPoints[newPoints.length - 1] = point;
-        const updatedSurface = { ...currentSurface, points: newPoints };
-        onUpdateItem(updatedSurface);
-        setCurrentSurface(updatedSurface);
     }
   };
   
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent) => {
     if (tool === 'measure' && isMeasuring) {
-      const currentLine = items.find(i => i.type === 'measurement' && (i as Measurement).end.x === (i as Measurement).start.x && (i as Measurement).end.y === (i as Measurement).start.y)
-      if (currentLine) {
-          onSelectItem(currentLine);
+      const point = getSVGPoint(e);
+      // find the line we just finished drawing
+      const currentLine = items.find(i => i.type === 'measurement' && (i as Measurement).end.x === point.x && (i as Measurement).end.y === point.y) as Measurement;
+      
+      if(currentLine) {
+        onSelectItem(currentLine)
       }
+
       setIsMeasuring(false);
       setTool('select');
     }
-    // For surfaces, mouse up doesn't end drawing, only another click or tool change
   };
 
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    if (tool === 'surface' && isDrawingSurface && currentSurface) {
-      e.preventDefault();
-      e.stopPropagation();
-      const finalPoints = [...currentSurface.points];
-      finalPoints.pop(); // Remove the last point which was added on mouse move
-      const finalSurface = { ...currentSurface, points: finalPoints };
-      onUpdateItem(finalSurface);
-
-      onSelectItem(finalSurface);
-      setIsDrawingSurface(false);
-      setCurrentSurface(null);
-      setTool('select');
-    }
-  };
 
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget || (e.target as SVGElement).tagName === 'rect' && !(e.target as SVGElement).hasAttribute('data-item-id')) {
@@ -182,11 +148,11 @@ export function Canvas({
   const surfaces = allItems.filter(i => i.type === 'surface') as Surface[];
 
   return (
-    <div className="w-full h-full bg-secondary/30" onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseDown={handleMouseDown} onClick={handleCanvasClick} onWheel={handleWheel} onDoubleClick={handleDoubleClick}>
+    <div className="w-full h-full bg-secondary/30" onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseDown={handleMouseDown} onClick={handleCanvasClick} onWheel={handleWheel}>
       <svg ref={svgRef} width="100%" height="100%" viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`} className={cn("w-full h-full", {
         'cursor-grab': tool === 'pan',
         'cursor-grabbing': (tool === 'pan' && (e => e.buttons === 1)),
-        'cursor-crosshair': tool === 'measure' || tool === 'surface',
+        'cursor-crosshair': tool === 'measure',
         'cursor-default': tool !== 'pan' && tool !== 'measure',
       })}>
         <defs>
@@ -198,7 +164,7 @@ export function Canvas({
         
         <g>
           {backgroundImage && (
-            <image href={backgroundImage} x={0} y={0} width="800" height="600" style={{opacity: 0.5}} />
+             <image href={backgroundImage} x="0" y="0" width={viewBox.width} height={viewBox.height} style={{opacity: 0.5, transform: `translate(${viewBox.x}px, ${viewBox.y}px)`}} />
           )}
 
           {rooms.map((room) => ( room.visible &&
@@ -221,14 +187,15 @@ export function Canvas({
           ))}
 
           {surfaces.map((surface) => ( surface.visible &&
-            <polyline
+            <line
               key={surface.id}
-              points={surface.points.map(p => `${p.x},${p.y}`).join(' ')}
+              x1={surface.start.x}
+              y1={surface.start.y}
+              x2={surface.end.x}
+              y2={surface.end.y}
               stroke={surfaceColors[surface.surfaceType]}
               strokeWidth={surface.thickness}
-              fill="none"
               strokeLinecap="round"
-              strokeLinejoin="round"
               className={tool === 'select' ? 'cursor-pointer' : ''}
               onMouseDown={(e) => handleMouseDown(e, surface)}
             />
@@ -265,7 +232,7 @@ export function Canvas({
           ))}
 
           {measurements.map((line) => {
-            if (!line.visible) return null;
+            if (!line.visible || line.isSurface) return null;
             const distance = getDistance(line.start, line.end);
             const midX = (line.start.x + line.end.x) / 2;
             const midY = (line.start.y + line.end.y) / 2;
